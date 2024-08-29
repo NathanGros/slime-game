@@ -5,125 +5,97 @@
 
 
 typedef struct {
-	int n;
-	Vector2 *a; //a = pointeur sur une liste de Vector2
+	int posx;
+	int posy;
+	int width;
+	int height;
 } Block;
 
 typedef struct {
 	int n;
-	Block* *a; //a = pointeur sur une liste de pointeurs sur Block
+	Block **tab; //tab = pointeur sur une liste de pointeurs sur Block
 } Room;
 
 typedef struct {
 	int n;
-	Room* *a; //a = pointeur sur une liste de pointeurs sur Rooms
+	Room **tab; //tab = pointeur sur une liste de pointeurs sur Room
 } Map;
 
 
 
-
-
-void window_init(Color bg) {
+void Init(Color bg) {
 	InitWindow(1500, 900, "Blob game");
 	ClearBackground(bg);
 	SetTargetFPS(60);
 }
 
-bool CheckCollisions(Vector2 pos, Room *r) {
-	bool res = false;
-	for (int i=0; i < r->n; i++) {
-		res = res || CheckCollisionPointPoly(pos, r->a[i]->a, r->a[i]->n);
+Block* InitBlock(int posx, int posy, int width, int height) {
+	Block *b = malloc(4 * sizeof(int));
+	b->posx = posx;
+	b->posy = posy;
+	b->width = width;
+	b->height = height;
+	return b;
+}
+
+Room* InitRoom(int n) {
+	Room* r = malloc(sizeof(Room));
+	r->tab=malloc(n * sizeof(Block));
+	r->n = n;
+	return r;
+}
+
+
+
+void DrawBlock(Block *b, float zoom) {
+	DrawRectangle(
+		(int) (zoom * (float) b->posx),
+		(int) (zoom * (float) b->posy),
+		(int) (zoom * (float) b->width),
+		(int) (zoom * (float) b->height),
+		RED
+	);
+}
+
+void DrawRoom(Room *r, float zoom) {
+	for (int i = 0; i < r->n; i++) {
+		DrawBlock(r->tab[i], zoom);
 	}
-	return res;
 }
-
-
-
-
-
-void draw_block(Block *b, int ppu) {
-	for (int i=0; i < b->n - 1; i++) {
-		DrawLine(ppu * b->a[i].x, ppu * b->a[i].y, ppu * b->a[i+1].x, ppu * b->a[i+1].y, RED);
-	};
-	DrawLine(ppu * b->a[b->n - 1].x, ppu * b->a[b->n - 1].y, ppu * b->a[0].x, ppu * b->a[0].y, RED);
-}
-
-void draw_room(int nb, Map *m, int ppu) {
-	Room *r = m->a[nb - 1];
-	for (int i=0; i<r->n; i++) {
-		draw_block(r->a[i], ppu);
-	}
-}
-
-
 
 
 
 void main() {
 	//Make the map
 		//blocks
-		Block *b1_r1 = malloc(sizeof(Block));
-		b1_r1->a = malloc(6 * sizeof(Vector2));
-		b1_r1->n = 6;
-		b1_r1->a = (Vector2 [])	{
-			(Vector2) {1., 1.},
-			(Vector2) {1., 5.},
-			(Vector2) {2., 5.},
-			(Vector2) {2., 3.},
-			(Vector2) {7., 3.},
-			(Vector2) {7., 1.}
-		};
-		Block *b2_r1 = malloc(sizeof(Block));
-		b2_r1->a = malloc(5 * sizeof(Vector2));
-		b2_r1->n = 5;
-		b2_r1->a = (Vector2 [])	{
-			(Vector2) {7., 8.},
-			(Vector2) {4., 7.},
-			(Vector2) {6., 6.},
-			(Vector2) {8., 4.},
-			(Vector2) {10., 4.}
-		};
-		Block *b1_r2 = malloc(sizeof(Block));
-		b1_r2->a = malloc(6 * sizeof(Vector2));
-		b1_r2->n = 6;
-		b1_r2->a = (Vector2 [])	{
-			(Vector2) {1., 1.},
-			(Vector2) {1., 3.},
-			(Vector2) {2., 3.},
-			(Vector2) {2., 5.},
-			(Vector2) {4., 5.},
-			(Vector2) {4., 1.}
-		};
+		Block *b0_r0 = InitBlock(100, 200, 200, 500);
+		Block *b1_r0 = InitBlock(600, 600, 200, 100);
+		Block *b0_r1 = InitBlock(0, 400, 200, 1000);
 
 		//rooms
-		Room *r1 = malloc(sizeof(Room));
-		r1->a = malloc(2 * sizeof(Block));
-		r1->n = 2;
-		r1->a[0] = b1_r1;
-		r1->a[1] = b2_r1;
+		Room *r0 = InitRoom(2);
+		r0->tab[0] = b0_r0;
+		r0->tab[1] = b1_r0;
 
-		Room *r2 = malloc(sizeof(Room));
-		r2->a = malloc(sizeof(Block));
-		r2->n = 1;
-		r2->a[0] = b1_r2;
+		Room *r1 = InitRoom(1);
+		r1->tab[0] = b0_r1;
 
 		//map
 		Map *m = malloc(sizeof(Map));
-		m->a = malloc(2 * sizeof(Room));
-		m->n = 1;
-		m->a[0] = r1;
-		m->a[1] = r2;
+		m->tab = malloc(2 * sizeof(Room));
+		m->n = 2;
+		m->tab[0] = r0;
+		m->tab[1] = r1;
 	
 	//Values
 	Color bg_color = (Color){ 20, 20, 20, 255 };
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	window_init(bg_color);
-	bool stick_mode = true;
-	Vector2 player_pos = (Vector2) {.5, .5};
-	int room_in = 1;
-	int ppu = GetScreenHeight() / 10; //pixel per unit (pixels on screen per game unit of measure)
+	Init(bg_color);
+	int current_room = 0;
+	float zoom = 1.;
 
 	while (!WindowShouldClose()) {
+	/*
 		//Controls
 			Vector2 player_pos_temp = player_pos;
 			if (IsKeyDown(KEY_W)) {
@@ -147,12 +119,11 @@ void main() {
 			if (IsKeyPressed(KEY_KP_2)) {
 				room_in = 2;
 			};
+	*/
 
 		BeginDrawing();
-		ppu = GetScreenHeight() / 10;
 		ClearBackground(bg_color);
-		draw_room(room_in, m, ppu);
-		DrawRectangle((int) (ppu * player_pos.x) - 5, (int) (ppu * player_pos.y) - 5, 10, 10, RAYWHITE);
+		DrawRoom(r0, zoom);
 		EndDrawing();
 	}
 }
