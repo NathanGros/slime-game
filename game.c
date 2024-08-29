@@ -126,4 +126,17 @@ void main() {
 		DrawRoom(r0, zoom);
 		EndDrawing();
 	}
+
+	//De-init
+	for(int i = 0; i < m->n; i++) {
+		Room *r = m->tab[i];
+		for(int j = 0; j < r->n; j++) {
+			Block *b = r->tab[j];
+			free(b);
+		}
+		free(r->tab);
+		free(r);
+	}
+	free(m->tab);
+	free(m);
 }
