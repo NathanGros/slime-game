@@ -105,6 +105,21 @@ void main() {
 		m->tab[1] = r1;
 	
 	while (!WindowShouldClose()) {
+		//Resize
+		if (IsWindowResized()) {
+			int w = GetScreenWidth();
+			int h = GetScreenHeight();
+		}
+
+		//Controls
+		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
+		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1; 
+		if (IsKeyDown(KEY_W)) camy -= 10; 
+		if (IsKeyDown(KEY_A)) camx -= 10; 
+		if (IsKeyDown(KEY_S)) camy += 10; 
+		if (IsKeyDown(KEY_D)) camx += 10; 
+		
+		//Drawing
 		BeginDrawing();
 		ClearBackground(bg_color);
 		DrawRoom(r0, w, h, camx, camy, zoom);
