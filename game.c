@@ -4,6 +4,8 @@
 
 
 
+//Struct
+
 typedef struct {
 	int posx;
 	int posy;
@@ -25,7 +27,21 @@ typedef struct {
 	Room **tab; //tab = pointeur sur une liste de pointeurs sur Room
 } Map;
 
+typedef struct {
+	int pos1x;
+	int pos1y;
+	int pos2x;
+	int pos2y;
+} Segment;
 
+typedef struct {
+	int n;
+	Segment **tab;
+} Rail;
+
+
+
+//Init
 
 void Init(Color bg) {
 	InitWindow(1500, 900, "Blob game");
@@ -44,7 +60,7 @@ Block* InitBlock(int posx, int posy, int width, int height) {
 
 Room* InitRoom(int n, int startx, int starty, int width, int height) {
 	Room* r = malloc(sizeof(Room));
-	r->tab=malloc(n * sizeof(Block));
+	r->tab = malloc(n * sizeof(Block));
 	r->n = n;
 	r->x = startx;
 	r->y = starty;
@@ -53,7 +69,25 @@ Room* InitRoom(int n, int startx, int starty, int width, int height) {
 	return r;
 }
 
+Segment* InitSegment(int x1, int y1, int x2, int y2) {
+	Segment *s = malloc(sizeof(Segment));
+	s->pos1x = x1;
+	s->pos1y = y1;
+	s->pos2x = x2;
+	s->pos2y = y2;
+	return s;
+}
 
+Rail* InitRail(int n) {
+	Rail *rail = malloc(sizeof(Rail));
+	rail->n = n;
+	rail->tab = malloc(n * sizeof(Segment));
+	return rail;
+}
+
+
+
+//Draw
 
 void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom) {
 	DrawRectangle(
@@ -90,6 +124,27 @@ void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, floa
 
 
 
+//Functions
+
+bool CheckCollisionRecLine(int x, int y, int x1, int y1, int x2, int y2) {
+	Rectangle player = (Rectangle) {x-20, y-20, 40, 40};
+	Rectangle line = (Rectangle) {x1, y1, x2-x1, y2-y1};
+	return CheckCollisionRecs(player, line);
+}
+
+bool IsOnRail(int x, int y, Rail *r) {
+	bool onrail = false;
+	for (int i = 0; i < r->n; i++) {
+		Segment *s = r->tab[i];
+		if (CheckCollisionRecLine(x, y, s->pos1x, s->pos1y, s->pos2x, s->pos2y)) onrail = true;
+	}
+	return onrail;
+}
+
+
+
+//Main
+
 void main() {
 	//Init
 	Color bg_color = (Color){ 20, 20, 20, 255 };
@@ -99,22 +154,33 @@ void main() {
 	float zoom = 1.;
 	int w = GetScreenWidth();
 	int h = GetScreenHeight();
-	int camx = w/2;
-	int camy = h/2;
-	int playerx = 200;
-	int playery = 200;
+	int camx = 0;
+	int camy = 0;
+	int playerx = 0;
+	int playery = -50;
 
 	//Make the map
 		//blocks
-		Block *b0_r0 = InitBlock(w/2-50, h/2, 100, h/2-100);
+		Block *b0_r0 = InitBlock(-50, 0, 100, 300);
 		Block *b0_r1 = InitBlock(0, 400, 200, 1000);
 
 		//rooms
-		Room *r0 = InitRoom(1, 100, 100, w-200, h-200);
+		Room *r0 = InitRoom(1, -500, -300, 1000, 600);
 		r0->tab[0] = b0_r0;
 
 		Room *r1 = InitRoom(1, 200, 100, w-300, h-100);
 		r1->tab[0] = b0_r1;
+
+		//rails
+		Rail *rail0 = InitRail(8);
+		rail0->tab[0] = InitSegment(-450, -250, 450, -250);
+		rail0->tab[1] = InitSegment(450, -250, 450, 250);
+		rail0->tab[2] = InitSegment(-450, -250, -450, 250);
+		rail0->tab[3] = InitSegment(-450, 250, -100, 250);
+		rail0->tab[4] = InitSegment(100, 250, 450, 250);
+		rail0->tab[5] = InitSegment(-100, -50, 100, -50);
+		rail0->tab[6] = InitSegment(-100, -50, -100, 250);
+		rail0->tab[7] = InitSegment(100, -50, 100, 250);
 
 		//map
 		Map *m = malloc(sizeof(Map));
@@ -131,16 +197,23 @@ void main() {
 		}
 
 		//Controls
+		int newplayerx = playerx;
+		int newplayery = playery;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1; 
-		if (IsKeyDown(KEY_W)) playery -= 10; 
-		if (IsKeyDown(KEY_A)) playerx -= 10; 
-		if (IsKeyDown(KEY_S)) playery += 10; 
-		if (IsKeyDown(KEY_D)) playerx += 10; 
+		if (IsKeyDown(KEY_W)) newplayery -= 10; 
+		if (IsKeyDown(KEY_A)) newplayerx -= 10; 
+		if (IsKeyDown(KEY_S)) newplayery += 10; 
+		if (IsKeyDown(KEY_D)) newplayerx += 10; 
 		if (IsKeyDown(KEY_UP)) camy -= 10; 
 		if (IsKeyDown(KEY_LEFT)) camx -= 10; 
 		if (IsKeyDown(KEY_DOWN)) camy += 10; 
 		if (IsKeyDown(KEY_RIGHT)) camx += 10; 
+		//Rail Collision
+		if (IsOnRail(newplayerx, newplayery, rail0)) {
+			playerx = newplayerx;
+			playery = newplayery;
+		}
 		
 		//Drawing
 		BeginDrawing();
