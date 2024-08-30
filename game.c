@@ -66,16 +66,31 @@ void DrawRoom(Room *r, float zoom) {
 
 
 void main() {
+	//Init
+	Color bg_color = (Color){ 20, 20, 20, 255 };
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+	Init(bg_color);
+	int current_room = 0;
+	float zoom = 1.;
+	int w = GetScreenWidth();
+	int h = GetScreenHeight();
+
 	//Make the map
 		//blocks
-		Block *b0_r0 = InitBlock(100, 200, 200, 500);
-		Block *b1_r0 = InitBlock(600, 600, 200, 100);
+		Block *b0_r0 = InitBlock(-500, 100, 600, h-300);
+		Block *b1_r0 = InitBlock(-500, -500, w+1000, 600);
+		Block *b2_r0 = InitBlock(w-100, 100, 600, h-300);
+		Block *b3_r0 = InitBlock(-500, h-100, w+1000, 600);
+		Block *b4_r0 = InitBlock(w/2-50, h/2, 100, h/2-100);
 		Block *b0_r1 = InitBlock(0, 400, 200, 1000);
 
 		//rooms
-		Room *r0 = InitRoom(2);
+		Room *r0 = InitRoom(5);
 		r0->tab[0] = b0_r0;
 		r0->tab[1] = b1_r0;
+		r0->tab[2] = b2_r0;
+		r0->tab[3] = b3_r0;
+		r0->tab[4] = b4_r0;
 
 		Room *r1 = InitRoom(1);
 		r1->tab[0] = b0_r1;
@@ -87,13 +102,6 @@ void main() {
 		m->tab[0] = r0;
 		m->tab[1] = r1;
 	
-	//Values
-	Color bg_color = (Color){ 20, 20, 20, 255 };
-	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	Init(bg_color);
-	int current_room = 0;
-	float zoom = 1.;
-
 	while (!WindowShouldClose()) {
 	/*
 		//Controls
@@ -126,6 +134,7 @@ void main() {
 		DrawRoom(r0, zoom);
 		EndDrawing();
 	}
+	CloseWindow();
 
 	//De-init
 	for(int i = 0; i < m->n; i++) {
