@@ -103,32 +103,6 @@ void main() {
 		m->tab[1] = r1;
 	
 	while (!WindowShouldClose()) {
-	/*
-		//Controls
-			Vector2 player_pos_temp = player_pos;
-			if (IsKeyDown(KEY_W)) {
-				player_pos_temp.y -= 0.1;
-			};
-			if (IsKeyDown(KEY_S)) {
-				player_pos_temp.y += 0.1;
-			};
-			if (IsKeyDown(KEY_A)) {
-				player_pos_temp.x -= 0.1;
-			};
-			if (IsKeyDown(KEY_D)) {
-				player_pos_temp.x += 0.1;
-			};
-			if (!CheckCollisions(player_pos_temp, m->a[room_in - 1])) {
-				player_pos = player_pos_temp;
-			};
-			if (IsKeyPressed(KEY_KP_1)) {
-				room_in = 1;
-			};
-			if (IsKeyPressed(KEY_KP_2)) {
-				room_in = 2;
-			};
-	*/
-
 		BeginDrawing();
 		ClearBackground(bg_color);
 		DrawRoom(r0, zoom);
