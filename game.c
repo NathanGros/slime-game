@@ -47,19 +47,19 @@ Room* InitRoom(int n) {
 
 
 
-void DrawBlock(Block *b, float zoom) {
+void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom) {
 	DrawRectangle(
-		(int) (zoom * (float) b->posx),
-		(int) (zoom * (float) b->posy),
-		(int) (zoom * (float) b->width),
-		(int) (zoom * (float) b->height),
+		(int) (w/2 - camx + (float) b->posx),
+		(int) (h/2 - camy + (float) b->posy),
+		(int) ((float) b->width),
+		(int) ((float) b->height),
 		RED
 	);
 }
 
-void DrawRoom(Room *r, float zoom) {
+void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom) {
 	for (int i = 0; i < r->n; i++) {
-		DrawBlock(r->tab[i], zoom);
+		DrawBlock(r->tab[i], w, h, camx, camy, zoom);
 	}
 }
 
@@ -74,6 +74,8 @@ void main() {
 	float zoom = 1.;
 	int w = GetScreenWidth();
 	int h = GetScreenHeight();
+	int camx = w/2;
+	int camy = h/2;
 
 	//Make the map
 		//blocks
@@ -105,7 +107,7 @@ void main() {
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 		ClearBackground(bg_color);
-		DrawRoom(r0, zoom);
+		DrawRoom(r0, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
 	CloseWindow();
