@@ -49,10 +49,10 @@ Room* InitRoom(int n) {
 
 void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom) {
 	DrawRectangle(
-		(int) (w/2 - camx + (float) b->posx),
-		(int) (h/2 - camy + (float) b->posy),
-		(int) ((float) b->width),
-		(int) ((float) b->height),
+		(w/2 - (int) (zoom * (float) (camx - b->posx))),
+		(h/2 - (int) (zoom * (float) (camy - b->posy))),
+		(int) (zoom * (float) b->width),
+		(int) (zoom * (float) b->height),
 		RED
 	);
 }
