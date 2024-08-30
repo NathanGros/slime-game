@@ -1,5 +1,2 @@
 # ignore vim files
 *.un~
-
-# ignore .gitignore
-*.gitignore
