@@ -12,6 +12,10 @@ typedef struct {
 } Block;
 
 typedef struct {
+	int x;
+	int y;
+	int width;
+	int height;
 	int n;
 	Block **tab; //tab = pointeur sur une liste de pointeurs sur Block
 } Room;
@@ -38,10 +42,14 @@ Block* InitBlock(int posx, int posy, int width, int height) {
 	return b;
 }
 
-Room* InitRoom(int n) {
+Room* InitRoom(int n, int startx, int starty, int width, int height) {
 	Room* r = malloc(sizeof(Room));
 	r->tab=malloc(n * sizeof(Block));
 	r->n = n;
+	r->x = startx;
+	r->y = starty;
+	r->width = width;
+	r->height = height;
 	return r;
 }
 
@@ -57,7 +65,14 @@ void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom) {
 	);
 }
 
-void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom) {
+void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_color) {
+	DrawRectangle(
+		(w/2 - (int) (zoom * (float) (camx - r->x))),
+		(h/2 - (int) (zoom * (float) (camy - r->y))),
+		(int) (zoom * (float) r->width),
+		(int) (zoom * (float) r->height),
+		bg_color
+	);
 	for (int i = 0; i < r->n; i++) {
 		DrawBlock(r->tab[i], w, h, camx, camy, zoom);
 	}
@@ -79,7 +94,7 @@ void main() {
 	//Init
 	Color bg_color = (Color){ 20, 20, 20, 255 };
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	Init(bg_color);
+	Init(RED);
 	int current_room = 0;
 	float zoom = 1.;
 	int w = GetScreenWidth();
@@ -91,22 +106,14 @@ void main() {
 
 	//Make the map
 		//blocks
-		Block *b0_r0 = InitBlock(-500, 100, 600, h-300);
-		Block *b1_r0 = InitBlock(-500, -500, w+1000, 600);
-		Block *b2_r0 = InitBlock(w-100, 100, 600, h-300);
-		Block *b3_r0 = InitBlock(-500, h-100, w+1000, 600);
-		Block *b4_r0 = InitBlock(w/2-50, h/2, 100, h/2-100);
+		Block *b0_r0 = InitBlock(w/2-50, h/2, 100, h/2-100);
 		Block *b0_r1 = InitBlock(0, 400, 200, 1000);
 
 		//rooms
-		Room *r0 = InitRoom(5);
+		Room *r0 = InitRoom(1, 100, 100, w-200, h-200);
 		r0->tab[0] = b0_r0;
-		r0->tab[1] = b1_r0;
-		r0->tab[2] = b2_r0;
-		r0->tab[3] = b3_r0;
-		r0->tab[4] = b4_r0;
 
-		Room *r1 = InitRoom(1);
+		Room *r1 = InitRoom(1, 200, 100, w-300, h-100);
 		r1->tab[0] = b0_r1;
 
 		//map
@@ -137,9 +144,9 @@ void main() {
 		
 		//Drawing
 		BeginDrawing();
-		ClearBackground(bg_color);
-		DrawRoom(r0, w, h, camx, camy, zoom);
-		DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
+			ClearBackground(RED);
+			DrawRoom(r0, w, h, camx, camy, zoom, bg_color);
+			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
 	CloseWindow();
