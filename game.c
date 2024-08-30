@@ -63,6 +63,16 @@ void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom) {
 	}
 }
 
+void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, float zoom) {
+	DrawRectangle(
+		(w/2 - (int) (zoom * (float) (camx - (playerx-20)))),
+		(h/2 - (int) (zoom * (float) (camy - (playery-20)))),
+		(int) (zoom * (float) 40),
+		(int) (zoom * (float) 40),
+		WHITE
+	);
+}
+
 
 
 void main() {
@@ -76,6 +86,8 @@ void main() {
 	int h = GetScreenHeight();
 	int camx = w/2;
 	int camy = h/2;
+	int playerx = 200;
+	int playery = 200;
 
 	//Make the map
 		//blocks
@@ -114,15 +126,20 @@ void main() {
 		//Controls
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1; 
-		if (IsKeyDown(KEY_W)) camy -= 10; 
-		if (IsKeyDown(KEY_A)) camx -= 10; 
-		if (IsKeyDown(KEY_S)) camy += 10; 
-		if (IsKeyDown(KEY_D)) camx += 10; 
+		if (IsKeyDown(KEY_W)) playery -= 10; 
+		if (IsKeyDown(KEY_A)) playerx -= 10; 
+		if (IsKeyDown(KEY_S)) playery += 10; 
+		if (IsKeyDown(KEY_D)) playerx += 10; 
+		if (IsKeyDown(KEY_UP)) camy -= 10; 
+		if (IsKeyDown(KEY_LEFT)) camx -= 10; 
+		if (IsKeyDown(KEY_DOWN)) camy += 10; 
+		if (IsKeyDown(KEY_RIGHT)) camx += 10; 
 		
 		//Drawing
 		BeginDrawing();
 		ClearBackground(bg_color);
 		DrawRoom(r0, w, h, camx, camy, zoom);
+		DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
 	CloseWindow();
