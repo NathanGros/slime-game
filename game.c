@@ -26,10 +26,22 @@ typedef struct {
 	int y1;
 	int x2;
 	int y2;
-	int n; //number of blocks
-	int m; //number of segments
+	int destroom;
+	int destx;
+	int desty;
+} Gate;
+
+typedef struct {
+	int x1;
+	int y1;
+	int x2;
+	int y2;
+	int blocknb;
+	int segmentnb;
+	int gatenb;
 	Block **blocks; //pointer on a list of pointers
 	Segment **rail;
+	Gate **gates;
 } Room;
 
 typedef struct {
@@ -57,19 +69,6 @@ Block* InitBlock(int x1, int y1, int x2, int y2, int type) {
 	return b;
 }
 
-Room* InitRoom(int n, int m, int x1, int y1, int x2, int y2) {
-	Room* r = malloc(sizeof(Room));
-	r->x1 = x1;
-	r->y1 = y1;
-	r->x2 = x2;
-	r->y2 = y2;
-	r->blocks = malloc(n * sizeof(Block));
-	r->n = n;
-	r->rail = malloc(m * sizeof(Segment));
-	r->m = m;
-	return r;
-}
-
 Segment* InitSegment(int x1, int y1, int x2, int y2) {
 	Segment *s = malloc(sizeof(Segment));
 	s->x1 = x1;
@@ -77,6 +76,33 @@ Segment* InitSegment(int x1, int y1, int x2, int y2) {
 	s->x2 = x2;
 	s->y2 = y2;
 	return s;
+}
+
+Gate* InitGate(int x1, int y1, int x2, int y2, int destroom, int destx, int desty) {
+	Gate *g = malloc(sizeof(Gate));
+	g->x1 = x1;
+	g->y1 = y1;
+	g->x2 = x2;
+	g->y2 = y2;
+	g->destroom = destroom;
+	g->destx = destx;
+	g->desty = desty;
+	return g;
+}
+
+Room* InitRoom(int blocknb, int segmentnb, int gatenb, int x1, int y1, int x2, int y2) {
+	Room* r = malloc(sizeof(Room));
+	r->x1 = x1;
+	r->y1 = y1;
+	r->x2 = x2;
+	r->y2 = y2;
+	r->blocks = malloc(blocknb * sizeof(Block));
+	r->blocknb = blocknb;
+	r->rail = malloc(segmentnb * sizeof(Segment));
+	r->segmentnb = segmentnb;
+	r->gates = malloc(gatenb * sizeof(Gate));
+	r->gatenb = gatenb;
+	return r;
 }
 
 
@@ -101,7 +127,7 @@ void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_co
 		(int) (zoom * (float) (r->y2 - r->y1)),
 		bg_col
 	);
-	for (int i = 0; i < r->n; i++) {
+	for (int i = 0; i < r->blocknb; i++) {
 		Block *b = r->blocks[i];
 		Color draw_col;
 		if (b->type == 0)
@@ -118,7 +144,7 @@ void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, floa
 		(h/2 - (int) (zoom * (float) (camy - (playery-20)))),
 		(int) (zoom * (float) 40),
 		(int) (zoom * (float) 40),
-		RED
+		DARKPURPLE
 	);
 }
 
@@ -134,7 +160,7 @@ bool CheckCollisionRecLine(int x, int y, int x1, int y1, int x2, int y2) {
 
 bool IsOnRail(int x, int y, Room *r) {
 	bool onrail = false;
-	for (int i = 0; i < r->m; i++) {
+	for (int i = 0; i < r->segmentnb; i++) {
 		Segment *s = r->rail[i];
 		if (CheckCollisionRecLine(x, y, s->x1, s->y1, s->x2, s->y2)) onrail = true;
 	}
@@ -151,7 +177,6 @@ void main() {
 	Color wall_col = (Color) {20, 20, 20, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	Init(wall_col);
-	int current_room = 0;
 	float zoom = 1.;
 	int w = GetScreenWidth();
 	int h = GetScreenHeight();
@@ -163,32 +188,34 @@ void main() {
 	//Make the map
 		//blocks
 		Block *b0_r0 = InitBlock(-50, 0, 50, 300, 0);
-		Block *b1_r0 = InitBlock(-800, 200, -500, 300, 1);
-		Block *b0_r1 = InitBlock(0, 400, 200, 1400, 0);
+		Block *b0_r1 = InitBlock(0, -500, 400, -400, 0);
+		
+		//gates
+		Gate *g0_r0 = InitGate(-600, 200, -500, 300, 1, 350, -550);
+		Gate *g0_r1 = InitGate(400, -600, 500, -500, 0, -450, 250);
 
 		//rooms
-		Room *r0 = InitRoom(2, 8, -500, -300, 500, 300);
+		Room *r0 = InitRoom(1, 8, 1, -500, -300, 500, 300);
 		r0->blocks[0] = b0_r0;
-		r0->blocks[1] = b1_r0;
+		r0->gates[0] = g0_r0;
 		r0->rail[0] = InitSegment(-450, -250, 450, -250);
 		r0->rail[1] = InitSegment(450, -250, 450, 250);
 		r0->rail[2] = InitSegment(-450, -250, -450, 250);
-		r0->rail[3] = InitSegment(-750, 250, -100, 250);
+		r0->rail[3] = InitSegment(-500, 250, -100, 250);
 		r0->rail[4] = InitSegment(100, 250, 450, 250);
 		r0->rail[5] = InitSegment(-100, -50, 100, -50);
 		r0->rail[6] = InitSegment(-100, -50, -100, 250);
 		r0->rail[7] = InitSegment(100, -50, 100, 250);
 
-		Room *r1 = InitRoom(1, 8, 200, 100, 500, 1800);
+		Room *r1 = InitRoom(1, 6, 1, -400, -600, 400, 600);
 		r1->blocks[0] = b0_r1;
-		r1->rail[0] = InitSegment(-450, -250, 450, -250); //rail to be changed
-		r1->rail[1] = InitSegment(450, -250, 450, 250);
-		r1->rail[2] = InitSegment(-450, -250, -450, 250);
-		r1->rail[3] = InitSegment(-450, 250, -100, 250);
-		r1->rail[4] = InitSegment(100, 250, 450, 250);
-		r1->rail[5] = InitSegment(-100, -50, 100, -50);
-		r1->rail[6] = InitSegment(-100, -50, -100, 250);
-		r1->rail[7] = InitSegment(100, -50, 100, 250);
+		r1->gates[0] = g0_r1;
+		r1->rail[0] = InitSegment(-350, -550, 400, -550);
+		r1->rail[1] = InitSegment(-350, -550, -350, 550);
+		r1->rail[2] = InitSegment(-350, 550, 350, 550);
+		r1->rail[3] = InitSegment(-50, -550, -50, -350);
+		r1->rail[4] = InitSegment(-50, -350, 350, -350);
+		r1->rail[5] = InitSegment(350, -350, 350, 550);
 
 		//map
 		Map *m = malloc(sizeof(Map));
@@ -197,11 +224,13 @@ void main() {
 		m->rooms[0] = r0;
 		m->rooms[1] = r1;
 	
+	Room *current_room = r0;
+
 	while (!WindowShouldClose()) {
 	//Resize
 		if (IsWindowResized()) {
-			int w = GetScreenWidth();
-			int h = GetScreenHeight();
+			w = GetScreenWidth();
+			h = GetScreenHeight();
 		}
 
 	//Controls
@@ -213,21 +242,33 @@ void main() {
 		if (IsKeyDown(KEY_A)) newplayerx -= 10; 
 		if (IsKeyDown(KEY_S)) newplayery += 10; 
 		if (IsKeyDown(KEY_D)) newplayerx += 10; 
-		if (IsKeyDown(KEY_UP)) camy -= 10; 
-		if (IsKeyDown(KEY_LEFT)) camx -= 10; 
-		if (IsKeyDown(KEY_DOWN)) camy += 10; 
-		if (IsKeyDown(KEY_RIGHT)) camx += 10; 
 
 	//Rail Collision
-		if (IsOnRail(newplayerx, newplayery, r0)) {
+		if (IsOnRail(newplayerx, newplayery, current_room)) {
 			playerx = newplayerx;
 			playery = newplayery;
 		}
+		camx = playerx;
+		camy = playery;
+	
+	//Changing room
+		Room *new_room = current_room;
+		for (int i = 0; i < current_room->gatenb; i++) {
+			Gate *g = current_room->gates[i];
+			Rectangle gate = (Rectangle) {g->x1, g->y1, g->x2 - g->x1, g->y2 - g->y1};
+			Rectangle player = (Rectangle) {playerx-20, playery-20, 40, 40};
+			if (CheckCollisionRecs(gate, player)) {
+				new_room = m->rooms[g->destroom];
+				playerx = g->destx;
+				playery = g->desty;
+			}
+		}
+		current_room = new_room;
 		
 	//Drawing
 		BeginDrawing();
 			ClearBackground(wall_col);
-			DrawRoom(r0, w, h, camx, camy, zoom, bg_col, wall_col);
+			DrawRoom(current_room, w, h, camx, camy, zoom, bg_col, wall_col);
 			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
@@ -236,14 +277,18 @@ void main() {
 	//De-init
 	for(int i = 0; i < m->n; i++) {
 		Room *r = m->rooms[i];
-		for(int j = 0; j < r->n; j++) {
+		for(int j = 0; j < r->blocknb; j++) {
 			free(r->blocks[j]);
 		}
 		free(r->blocks);
-		for(int j = 0; j < r->m; j++) {
+		for(int j = 0; j < r->segmentnb; j++) {
 			free(r->rail[j]);
 		}
 		free(r->rail);
+		for(int j = 0; j < r->gatenb; j++) {
+			free(r->gates[j]);
+		}
+		free(r->gates);
 		free(r);
 	}
 	free(m->rooms);
