@@ -138,13 +138,26 @@ void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_co
 	}
 }
 
+void DrawRail(Room *r, int w, int h, int camx, int camy, float zoom) {
+	for (int i = 0; i < r->segmentnb; i++) {
+		Segment *s = r->rail[i];
+		DrawLine(
+			(w/2 - (int) (zoom * (float) (camx - s->x1))),
+			(h/2 - (int) (zoom * (float) (camy - s->y1))),
+			(w/2 - (int) (zoom * (float) (camx - s->x2))),
+			(h/2 - (int) (zoom * (float) (camy - s->y2))),
+			RED
+		);
+	}
+}
+
 void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, float zoom) {
 	DrawRectangle(
 		(w/2 - (int) (zoom * (float) (camx - (playerx-20)))),
 		(h/2 - (int) (zoom * (float) (camy - (playery-20)))),
 		(int) (zoom * (float) 40),
 		(int) (zoom * (float) 40),
-		DARKPURPLE
+		(Color) {115, 0, 255, 255}
 	);
 }
 
@@ -184,6 +197,7 @@ void main() {
 	int camy = 0;
 	int playerx = 0;
 	int playery = -50;
+	bool showrail = false;
 
 	//Make the map
 		//blocks
@@ -242,6 +256,7 @@ void main() {
 		if (IsKeyDown(KEY_A)) newplayerx -= 10; 
 		if (IsKeyDown(KEY_S)) newplayery += 10; 
 		if (IsKeyDown(KEY_D)) newplayerx += 10; 
+		if (IsKeyPressed(KEY_R)) showrail = !showrail; 
 
 	//Rail Collision
 		if (IsOnRail(newplayerx, newplayery, current_room)) {
@@ -269,6 +284,7 @@ void main() {
 		BeginDrawing();
 			ClearBackground(wall_col);
 			DrawRoom(current_room, w, h, camx, camy, zoom, bg_col, wall_col);
+			if (showrail) DrawRail(current_room, w, h, camx, camy, zoom);
 			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
