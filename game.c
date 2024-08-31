@@ -7,37 +7,35 @@
 //Struct
 
 typedef struct {
-	int posx;
-	int posy;
-	int width;
-	int height;
+	int x1;
+	int y1;
+	int x2;
+	int y2;
+	int type;
 } Block;
 
 typedef struct {
-	int x;
-	int y;
-	int width;
-	int height;
-	int n;
-	Block **tab; //tab = pointeur sur une liste de pointeurs sur Block
-} Room;
-
-typedef struct {
-	int n;
-	Room **tab; //tab = pointeur sur une liste de pointeurs sur Room
-} Map;
-
-typedef struct {
-	int pos1x;
-	int pos1y;
-	int pos2x;
-	int pos2y;
+	int x1;
+	int y1;
+	int x2;
+	int y2;
 } Segment;
 
 typedef struct {
-	int n;
-	Segment **tab;
-} Rail;
+	int x1;
+	int y1;
+	int x2;
+	int y2;
+	int n; //number of blocks
+	int m; //number of segments
+	Block **blocks; //pointer on a list of pointers
+	Segment **rail;
+} Room;
+
+typedef struct {
+	int n; //number of rooms
+	Room **rooms;
+} Map;
 
 
 
@@ -49,66 +47,62 @@ void Init(Color bg) {
 	SetTargetFPS(60);
 }
 
-Block* InitBlock(int posx, int posy, int width, int height) {
-	Block *b = malloc(4 * sizeof(int));
-	b->posx = posx;
-	b->posy = posy;
-	b->width = width;
-	b->height = height;
+Block* InitBlock(int x1, int y1, int x2, int y2, int type) {
+	Block *b = malloc(sizeof(Block));
+	b->x1 = x1;
+	b->y1 = y1;
+	b->x2 = x2;
+	b->y2 = y2;
+	b->type = type;
 	return b;
 }
 
-Room* InitRoom(int n, int startx, int starty, int width, int height) {
+Room* InitRoom(int n, int m, int x1, int y1, int x2, int y2) {
 	Room* r = malloc(sizeof(Room));
-	r->tab = malloc(n * sizeof(Block));
+	r->x1 = x1;
+	r->y1 = y1;
+	r->x2 = x2;
+	r->y2 = y2;
+	r->blocks = malloc(n * sizeof(Block));
 	r->n = n;
-	r->x = startx;
-	r->y = starty;
-	r->width = width;
-	r->height = height;
+	r->rail = malloc(m * sizeof(Segment));
+	r->m = m;
 	return r;
 }
 
 Segment* InitSegment(int x1, int y1, int x2, int y2) {
 	Segment *s = malloc(sizeof(Segment));
-	s->pos1x = x1;
-	s->pos1y = y1;
-	s->pos2x = x2;
-	s->pos2y = y2;
+	s->x1 = x1;
+	s->y1 = y1;
+	s->x2 = x2;
+	s->y2 = y2;
 	return s;
-}
-
-Rail* InitRail(int n) {
-	Rail *rail = malloc(sizeof(Rail));
-	rail->n = n;
-	rail->tab = malloc(n * sizeof(Segment));
-	return rail;
 }
 
 
 
 //Draw
 
-void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom) {
+void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom, Color col) {
 	DrawRectangle(
-		(w/2 - (int) (zoom * (float) (camx - b->posx))),
-		(h/2 - (int) (zoom * (float) (camy - b->posy))),
-		(int) (zoom * (float) b->width),
-		(int) (zoom * (float) b->height),
-		RED
+		(w/2 - (int) (zoom * (float) (camx - b->x1))),
+		(h/2 - (int) (zoom * (float) (camy - b->y1))),
+		(int) (zoom * (float) (b->x2 - b->x1)),
+		(int) (zoom * (float) (b->y2 - b->y1)),
+		col
 	);
 }
 
-void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_color) {
+void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_col) {
 	DrawRectangle(
-		(w/2 - (int) (zoom * (float) (camx - r->x))),
-		(h/2 - (int) (zoom * (float) (camy - r->y))),
-		(int) (zoom * (float) r->width),
-		(int) (zoom * (float) r->height),
-		bg_color
+		(w/2 - (int) (zoom * (float) (camx - r->x1))),
+		(h/2 - (int) (zoom * (float) (camy - r->y1))),
+		(int) (zoom * (float) (r->x2 - r->x1)),
+		(int) (zoom * (float) (r->y2 - r->y1)),
+		bg_col
 	);
 	for (int i = 0; i < r->n; i++) {
-		DrawBlock(r->tab[i], w, h, camx, camy, zoom);
+		DrawBlock(r->blocks[i], w, h, camx, camy, zoom, RED);
 	}
 }
 
@@ -132,11 +126,11 @@ bool CheckCollisionRecLine(int x, int y, int x1, int y1, int x2, int y2) {
 	return CheckCollisionRecs(player, line);
 }
 
-bool IsOnRail(int x, int y, Rail *r) {
+bool IsOnRail(int x, int y, Room *r) {
 	bool onrail = false;
-	for (int i = 0; i < r->n; i++) {
-		Segment *s = r->tab[i];
-		if (CheckCollisionRecLine(x, y, s->pos1x, s->pos1y, s->pos2x, s->pos2y)) onrail = true;
+	for (int i = 0; i < r->m; i++) {
+		Segment *s = r->rail[i];
+		if (CheckCollisionRecLine(x, y, s->x1, s->y1, s->x2, s->y2)) onrail = true;
 	}
 	return onrail;
 }
@@ -147,7 +141,7 @@ bool IsOnRail(int x, int y, Rail *r) {
 
 void main() {
 	//Init
-	Color bg_color = (Color){ 20, 20, 20, 255 };
+	Color bg_col = (Color) {20, 20, 20, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	Init(RED);
 	int current_room = 0;
@@ -161,42 +155,47 @@ void main() {
 
 	//Make the map
 		//blocks
-		Block *b0_r0 = InitBlock(-50, 0, 100, 300);
-		Block *b0_r1 = InitBlock(0, 400, 200, 1000);
+		Block *b0_r0 = InitBlock(-50, 0, 50, 300, 0);
+		Block *b0_r1 = InitBlock(0, 400, 200, 1400, 0);
 
 		//rooms
-		Room *r0 = InitRoom(1, -500, -300, 1000, 600);
-		r0->tab[0] = b0_r0;
+		Room *r0 = InitRoom(1, 8, -500, -300, 500, 300);
+		r0->blocks[0] = b0_r0;
+		r0->rail[0] = InitSegment(-450, -250, 450, -250);
+		r0->rail[1] = InitSegment(450, -250, 450, 250);
+		r0->rail[2] = InitSegment(-450, -250, -450, 250);
+		r0->rail[3] = InitSegment(-450, 250, -100, 250);
+		r0->rail[4] = InitSegment(100, 250, 450, 250);
+		r0->rail[5] = InitSegment(-100, -50, 100, -50);
+		r0->rail[6] = InitSegment(-100, -50, -100, 250);
+		r0->rail[7] = InitSegment(100, -50, 100, 250);
 
-		Room *r1 = InitRoom(1, 200, 100, w-300, h-100);
-		r1->tab[0] = b0_r1;
-
-		//rails
-		Rail *rail0 = InitRail(8);
-		rail0->tab[0] = InitSegment(-450, -250, 450, -250);
-		rail0->tab[1] = InitSegment(450, -250, 450, 250);
-		rail0->tab[2] = InitSegment(-450, -250, -450, 250);
-		rail0->tab[3] = InitSegment(-450, 250, -100, 250);
-		rail0->tab[4] = InitSegment(100, 250, 450, 250);
-		rail0->tab[5] = InitSegment(-100, -50, 100, -50);
-		rail0->tab[6] = InitSegment(-100, -50, -100, 250);
-		rail0->tab[7] = InitSegment(100, -50, 100, 250);
+		Room *r1 = InitRoom(1, 8, 200, 100, 500, 1800);
+		r1->blocks[0] = b0_r1;
+		r1->rail[0] = InitSegment(-450, -250, 450, -250); //rail to be changed
+		r1->rail[1] = InitSegment(450, -250, 450, 250);
+		r1->rail[2] = InitSegment(-450, -250, -450, 250);
+		r1->rail[3] = InitSegment(-450, 250, -100, 250);
+		r1->rail[4] = InitSegment(100, 250, 450, 250);
+		r1->rail[5] = InitSegment(-100, -50, 100, -50);
+		r1->rail[6] = InitSegment(-100, -50, -100, 250);
+		r1->rail[7] = InitSegment(100, -50, 100, 250);
 
 		//map
 		Map *m = malloc(sizeof(Map));
-		m->tab = malloc(2 * sizeof(Room));
+		m->rooms = malloc(2 * sizeof(Room));
 		m->n = 2;
-		m->tab[0] = r0;
-		m->tab[1] = r1;
+		m->rooms[0] = r0;
+		m->rooms[1] = r1;
 	
 	while (!WindowShouldClose()) {
-		//Resize
+	//Resize
 		if (IsWindowResized()) {
 			int w = GetScreenWidth();
 			int h = GetScreenHeight();
 		}
 
-		//Controls
+	//Controls
 		int newplayerx = playerx;
 		int newplayery = playery;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
@@ -209,16 +208,17 @@ void main() {
 		if (IsKeyDown(KEY_LEFT)) camx -= 10; 
 		if (IsKeyDown(KEY_DOWN)) camy += 10; 
 		if (IsKeyDown(KEY_RIGHT)) camx += 10; 
-		//Rail Collision
-		if (IsOnRail(newplayerx, newplayery, rail0)) {
+
+	//Rail Collision
+		if (IsOnRail(newplayerx, newplayery, r0)) {
 			playerx = newplayerx;
 			playery = newplayery;
 		}
 		
-		//Drawing
+	//Drawing
 		BeginDrawing();
 			ClearBackground(RED);
-			DrawRoom(r0, w, h, camx, camy, zoom, bg_color);
+			DrawRoom(r0, w, h, camx, camy, zoom, bg_col);
 			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
@@ -226,14 +226,17 @@ void main() {
 
 	//De-init
 	for(int i = 0; i < m->n; i++) {
-		Room *r = m->tab[i];
+		Room *r = m->rooms[i];
 		for(int j = 0; j < r->n; j++) {
-			Block *b = r->tab[j];
-			free(b);
+			free(r->blocks[j]);
 		}
-		free(r->tab);
+		free(r->blocks);
+		for(int j = 0; j < r->m; j++) {
+			free(r->rail[j]);
+		}
+		free(r->rail);
 		free(r);
 	}
-	free(m->tab);
+	free(m->rooms);
 	free(m);
 }
