@@ -93,7 +93,7 @@ void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom, Color col
 	);
 }
 
-void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_col) {
+void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_col, Color wall_col) {
 	DrawRectangle(
 		(w/2 - (int) (zoom * (float) (camx - r->x1))),
 		(h/2 - (int) (zoom * (float) (camy - r->y1))),
@@ -102,7 +102,13 @@ void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_co
 		bg_col
 	);
 	for (int i = 0; i < r->n; i++) {
-		DrawBlock(r->blocks[i], w, h, camx, camy, zoom, RED);
+		Block *b = r->blocks[i];
+		Color draw_col;
+		if (b->type == 0)
+			draw_col = wall_col;
+		else
+			draw_col = bg_col;
+		DrawBlock(b, w, h, camx, camy, zoom, draw_col);
 	}
 }
 
@@ -112,7 +118,7 @@ void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, floa
 		(h/2 - (int) (zoom * (float) (camy - (playery-20)))),
 		(int) (zoom * (float) 40),
 		(int) (zoom * (float) 40),
-		WHITE
+		RED
 	);
 }
 
@@ -141,9 +147,10 @@ bool IsOnRail(int x, int y, Room *r) {
 
 void main() {
 	//Init
-	Color bg_col = (Color) {20, 20, 20, 255};
+	Color bg_col = (Color) {200, 200, 200, 255};
+	Color wall_col = (Color) {20, 20, 20, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	Init(RED);
+	Init(wall_col);
 	int current_room = 0;
 	float zoom = 1.;
 	int w = GetScreenWidth();
@@ -156,15 +163,17 @@ void main() {
 	//Make the map
 		//blocks
 		Block *b0_r0 = InitBlock(-50, 0, 50, 300, 0);
+		Block *b1_r0 = InitBlock(-800, 200, -500, 300, 1);
 		Block *b0_r1 = InitBlock(0, 400, 200, 1400, 0);
 
 		//rooms
-		Room *r0 = InitRoom(1, 8, -500, -300, 500, 300);
+		Room *r0 = InitRoom(2, 8, -500, -300, 500, 300);
 		r0->blocks[0] = b0_r0;
+		r0->blocks[1] = b1_r0;
 		r0->rail[0] = InitSegment(-450, -250, 450, -250);
 		r0->rail[1] = InitSegment(450, -250, 450, 250);
 		r0->rail[2] = InitSegment(-450, -250, -450, 250);
-		r0->rail[3] = InitSegment(-450, 250, -100, 250);
+		r0->rail[3] = InitSegment(-750, 250, -100, 250);
 		r0->rail[4] = InitSegment(100, 250, 450, 250);
 		r0->rail[5] = InitSegment(-100, -50, 100, -50);
 		r0->rail[6] = InitSegment(-100, -50, -100, 250);
@@ -217,8 +226,8 @@ void main() {
 		
 	//Drawing
 		BeginDrawing();
-			ClearBackground(RED);
-			DrawRoom(r0, w, h, camx, camy, zoom, bg_col);
+			ClearBackground(wall_col);
+			DrawRoom(r0, w, h, camx, camy, zoom, bg_col, wall_col);
 			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
