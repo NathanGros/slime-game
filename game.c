@@ -51,8 +51,8 @@ typedef struct {
 } Map;
 
 typedef struct {
-	int forceX;
-	int forceY;
+	float forceX;
+	float forceY;
 } Force;
 
 typedef struct {
@@ -60,10 +60,10 @@ typedef struct {
 	int radius;
 	float mass;
 	float airResistance;
-	int posX;
-	int posY;
-	int velocityX;
-	int velocityY;
+	float posX;
+	float posY;
+	float velocityX;
+	float velocityY;
 	int forceNb;
 	Force *forces;
 } Body;
@@ -125,7 +125,7 @@ Room* InitRoom(int blockNb, int wallNb, int gateNb, int x1, int y1, int x2, int 
 	return room;
 }
 
-Body* InitBody(Color color, int radius, float mass, float airResistance, int posX, int posY, int velocityX, int velocityY, int forceNb) {
+Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, int forceNb) {
 	Body *body = malloc(sizeof(Body));
 	body->color = color;
 	body->radius = radius;
@@ -183,8 +183,8 @@ void DrawWalls(Room *room, int screenWidth, int screenHeight, int cameraX, int c
 
 void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, int cameraY, float zoom) {
 	DrawRectangle(
-		(screenWidth / 2 - (int) (zoom * (float) (cameraX - (player->posX - player->radius)))),
-		(screenHeight / 2 - (int) (zoom * (float) (cameraY - (player->posY - player->radius)))),
+		(screenWidth / 2 - (int) (zoom * (float) (cameraX - ((int) player->posX - player->radius)))),
+		(screenHeight / 2 - (int) (zoom * (float) (cameraY - ((int) player->posY - player->radius)))),
 		(int) (zoom * (float) (2 * player->radius)),
 		(int) (zoom * (float) (2 * player->radius)),
 		player->color
@@ -197,83 +197,83 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 void UpdateForces(Body *player) {
 	//Weight
-	int weightForce = player->mass * 500;
-	player->forces[0].forceX = 0;
+	float weightForce = player->mass * 500.;
+	player->forces[0].forceX = 0.;
 	player->forces[0].forceY = weightForce;
 	//Air resistance
-	int airResistanceForceX = (int) (-1. * player->airResistance * (float) player->velocityX);
-	int airResistanceForceY = (int) (-1. * player->airResistance * (float) player->velocityY);
+	float airResistanceForceX = -1. * player->airResistance * player->velocityX;
+	float airResistanceForceY = -1. * player->airResistance * player->velocityY;
 	player->forces[1].forceX = airResistanceForceX;
 	player->forces[1].forceY = airResistanceForceY;
 }
 
-int ForceSumX(Body *player) {
-	int result = 0;
+float ForceSumX(Body *player) {
+	float result = 0;
 	for (int i = 0; i < player->forceNb; i++) result += player->forces[i].forceX;
 	return result;
 }
 
-int ForceSumY(Body *player) {
-	int result = 0;
+float ForceSumY(Body *player) {
+	float result = 0;
 	for (int i = 0; i < player->forceNb; i++) result += player->forces[i].forceY;
 	return result;
 }
 
-void UpdateBodyPosition(int *newPosX, int *newPosY, Body *player) {
+void UpdateBodyPosition(float *newPosX, float *newPosY, Body *player) { //Euler algorythm
 	float dt = GetFrameTime();
-	float accelerationX = (float) ForceSumX(player) / (float) player->mass;
-	float accelerationY = (float) ForceSumY(player) / (float) player->mass;
-	player->velocityX += (int) (accelerationX * dt);
-	player->velocityY += (int) (accelerationY * dt);
-	*newPosX += (int) ((float) player->velocityX * dt);
-	*newPosY += (int) ((float) player->velocityY * dt);
+	float accelerationX = ForceSumX(player) / player->mass;
+	float accelerationY = ForceSumY(player) / player->mass;
+	player->velocityX += accelerationX * dt;
+	player->velocityY += accelerationY * dt;
+	*newPosX += player->velocityX * dt;
+	*newPosY += player->velocityY * dt;
 }
 
-bool IsAboveLine(int slope, int pointOnLineX, int pointOnLineY, int posX, int posY) {
-	int ordinateAtOrigin = pointOnLineY - slope * pointOnLineX; //Linear function : t |--> slope * t + ordinateAtOrigin
+bool IsAboveLine(float slope, int pointOnLineX, int pointOnLineY, float posX, float posY) {
+	int ordinateAtOrigin = (float) pointOnLineY - slope * (float) pointOnLineX; //Linear function : t |--> slope * t + ordinateAtOrigin
 	return (posY > (slope * posX + ordinateAtOrigin));
 }
 
-bool CheckCollisionPlayerWall(int newPosX, int newPosY, Body *player, int x1, int y1, int x2, int y2, char direction) {
+bool CheckCollisionPlayerWall(float newPosX, float newPosY, Body *player, int x1, int y1, int x2, int y2, char direction) {
 	bool isInWall = false;
 	if (direction == 'U'
-		&& newPosY + player->radius > y1 && newPosY - player->radius < y1
-		&& newPosX + player->radius > x1 && newPosX - player->radius < x2
-		&& !IsAboveLine(1, x1, y1, player->posX, player->posY) && !IsAboveLine(-1, x2, y2, player->posX, player->posY)) isInWall = true;
+		&& (int) newPosY + player->radius > y1 && (int) newPosY - player->radius < y1
+		&& (int) newPosX + player->radius > x1 && (int) newPosX - player->radius < x2
+		&& !IsAboveLine(1., x1, y1, player->posX, player->posY) && !IsAboveLine(-1., x2, y2, player->posX, player->posY)) isInWall = true;
 	if (direction == 'D'
-		&& newPosY + player->radius > y1 && newPosY - player->radius < y1
-		&& newPosX + player->radius > x1 && newPosX - player->radius < x2
-		&& IsAboveLine(-1, x1, y1, player->posX, player->posY) && IsAboveLine(1, x2, y2, player->posX, player->posY)) isInWall = true;
+		&& (int) newPosY + player->radius > y1 && (int) newPosY - player->radius < y1
+		&& (int) newPosX + player->radius > x1 && (int) newPosX - player->radius < x2
+		&& IsAboveLine(-1., x1, y1, player->posX, player->posY) && IsAboveLine(1., x2, y2, player->posX, player->posY)) isInWall = true;
 	if (direction == 'L'
-		&& newPosX + player->radius > x1 && newPosX - player->radius < x1
-		&& newPosY + player->radius > y1 && newPosY - player->radius < y2
-		&& IsAboveLine(1, x1, y1, player->posX, player->posY) && !IsAboveLine(-1, x2, y2, player->posX, player->posY)) isInWall = true;
+		&& (int) newPosX + player->radius > x1 && (int) newPosX - player->radius < x1
+		&& (int) newPosY + player->radius > y1 && (int) newPosY - player->radius < y2
+		&& IsAboveLine(1., x1, y1, player->posX, player->posY) && !IsAboveLine(-1., x2, y2, player->posX, player->posY)) isInWall = true;
 	if (direction == 'R'
-		&& newPosX + player->radius > x1 && newPosX - player->radius < x1
-		&& newPosY + player->radius > y1 && newPosY - player->radius < y2
-		&& IsAboveLine(-1, x1, y1, player->posX, player->posY) && !IsAboveLine(1, x2, y2, player->posX, player->posY)) isInWall = true;
+		&& (int) newPosX + player->radius > x1 && (int) newPosX - player->radius < x1
+		&& (int) newPosY + player->radius > y1 && (int) newPosY - player->radius < y2
+		&& IsAboveLine(-1., x1, y1, player->posX, player->posY) && !IsAboveLine(1., x2, y2, player->posX, player->posY)) isInWall = true;
 	return isInWall;
 }
 
-void ExecuteCollisions(Room *room, int *newPosX, int *newPosY, Body *player) {
+void ExecuteCollisions(Room *room, float *newPosX, float *newPosY, Body *player) {
 	for (int i = 0; i < room->wallNb; i++) {
 		Wall *wall = room->walls[i];
 		if (CheckCollisionPlayerWall(*newPosX, *newPosY, player, wall->x1, wall->y1, wall->x2, wall->y2, wall->direction)) {
 			if (wall->direction == 'U') {
-				*newPosY = wall->y1 - player->radius;
-				player->velocityY = 0;
+				*newPosY = (float) (wall->y1 - player->radius);
+				player->velocityY = 0.;
 			}
 			if (wall->direction == 'D') {
-				*newPosY = wall->y1 + player->radius;
-				player->velocityY = 0;
+				*newPosY = (float) (wall->y1 + player->radius);
+				player->velocityY = 0.;
 			}
 			if (wall->direction == 'L') {
-				*newPosX = wall->x1 - player->radius;
-				player->velocityX = 0;
+				*newPosX = (float) (wall->x1 - player->radius);
+				player->velocityX = 0.;
 			}
 			if (wall->direction == 'R') {
-				*newPosX = wall->x1 + player->radius;
-				player->velocityX = 0;
+				*newPosX = (float) (wall->x1 + player->radius);
+				player->velocityX = 0.;
 			}
 		}
 	}
@@ -297,13 +297,13 @@ void main() {
 	bool displayWalls = false;
 
 	//Make player
-	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 0.2, 0, -100, 0, 0, 3);
-	player->forces[0].forceX = 0;
-	player->forces[0].forceY = 0;
-	player->forces[1].forceX = 0;
-	player->forces[1].forceY = 0;
-	player->forces[2].forceX = 0;
-	player->forces[2].forceY = 0;
+	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 0.5, 0., -100., 0., 0., 3);
+	player->forces[0].forceX = 0.;
+	player->forces[0].forceY = 0.;
+	player->forces[1].forceX = 0.;
+	player->forces[1].forceY = 0.;
+	player->forces[2].forceX = 0.;
+	player->forces[2].forceY = 0.;
 
 	//Make the map
 		//blocks
@@ -355,16 +355,16 @@ void main() {
 		}
 
 	//Controls
-		int newPosX = player->posX;
-		int newPosY = player->posY;
-		int controlForceX = 0;
-		int controlForceY = 0;
+		float newPosX = player->posX;
+		float newPosY = player->posY;
+		float controlForceX = 0.;
+		float controlForceY = 0.;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1;
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1;
-		if (IsKeyDown(KEY_W)) controlForceY -= 1500;
-		if (IsKeyDown(KEY_A)) controlForceX -= 500;
-		if (IsKeyDown(KEY_S)) controlForceY += 500;
-		if (IsKeyDown(KEY_D)) controlForceX += 500;
+		if (IsKeyDown(KEY_W)) controlForceY -= 1500.;
+		if (IsKeyDown(KEY_A)) controlForceX -= 500.;
+		if (IsKeyDown(KEY_S)) controlForceY += 500.;
+		if (IsKeyDown(KEY_D)) controlForceX += 500.;
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
 		player->forces[2].forceX = controlForceX;
 		player->forces[2].forceY = controlForceY;
@@ -379,19 +379,19 @@ void main() {
 		player->posY = newPosY;
 
 	//Camera update
-		cameraX = player->posX;
-		cameraY = player->posY;
+		cameraX = (int) player->posX;
+		cameraY = (int) player->posY;
 	
 	//Changing room TODO
 		Room *newRoom = currentRoom;
 		for (int i = 0; i < currentRoom->gateNb; i++) {
 			Gate *gate = currentRoom->gates[i];
 			Rectangle gateRect = (Rectangle) {gate->x1, gate->y1, gate->x2 - gate->x1, gate->y2 - gate->y1};
-			Rectangle playerRect = (Rectangle) {player->posX - player->radius, player->posY - player->radius, 2 * player->radius, 2 * player->radius};
+			Rectangle playerRect = (Rectangle) {(int) player->posX - player->radius, (int) player->posY - player->radius, 2 * player->radius, 2 * player->radius};
 			if (CheckCollisionRecs(gateRect, playerRect)) {
 				newRoom = map->rooms[gate->destRoom];
-				player->posX = gate->destX;
-				player->posY = gate->destY;
+				player->posX = (float) gate->destX;
+				player->posY = (float) gate->destY;
 			}
 		}
 		currentRoom = newRoom;
