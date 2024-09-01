@@ -59,7 +59,7 @@ typedef struct {
 	Color color;
 	int radius;
 	float mass;
-	float airRes;
+	float airResistance;
 	int posX;
 	int posY;
 	int velocityX;
@@ -125,12 +125,12 @@ Room* InitRoom(int blockNb, int wallNb, int gateNb, int x1, int y1, int x2, int 
 	return room;
 }
 
-Body* InitBody(Color color, int radius, float mass, float airRes, int posX, int posY, int velocityX, int velocityY, int forceNb) {
+Body* InitBody(Color color, int radius, float mass, float airResistance, int posX, int posY, int velocityX, int velocityY, int forceNb) {
 	Body *body = malloc(sizeof(Body));
 	body->color = color;
 	body->radius = radius;
 	body->mass = mass;
-	body->airRes = airRes;
+	body->airResistance = airResistance;
 	body->posX = posX;
 	body->posY = posY;
 	body->velocityX = velocityX;
@@ -197,11 +197,14 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 void UpdateForces(Body *player) {
 	//Weight
-	int weightForce = player->mass * 200;
+	int weightForce = player->mass * 500;
 	player->forces[0].forceX = 0;
 	player->forces[0].forceY = weightForce;
 	//Air resistance
-
+	int airResistanceForceX = (int) (-1. * player->airResistance * (float) player->velocityX);
+	int airResistanceForceY = (int) (-1. * player->airResistance * (float) player->velocityY);
+	player->forces[1].forceX = airResistanceForceX;
+	player->forces[1].forceY = airResistanceForceY;
 }
 
 int ForceSumX(Body *player) {
@@ -294,7 +297,7 @@ void main() {
 	bool displayWalls = false;
 
 	//Make player
-	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 1., 0, -100, 0, 0, 3);
+	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 0.2, 0, -100, 0, 0, 3);
 	player->forces[0].forceX = 0;
 	player->forces[0].forceY = 0;
 	player->forces[1].forceX = 0;
@@ -354,13 +357,17 @@ void main() {
 	//Controls
 		int newPosX = player->posX;
 		int newPosY = player->posY;
+		int controlForceX = 0;
+		int controlForceY = 0;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1;
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1;
-		if (IsKeyDown(KEY_W)) newPosY -= 10;
-		if (IsKeyDown(KEY_A)) newPosX -= 10;
-		if (IsKeyDown(KEY_S)) newPosY += 10;
-		if (IsKeyDown(KEY_D)) newPosX += 10;
+		if (IsKeyDown(KEY_W)) controlForceY -= 1500;
+		if (IsKeyDown(KEY_A)) controlForceX -= 500;
+		if (IsKeyDown(KEY_S)) controlForceY += 500;
+		if (IsKeyDown(KEY_D)) controlForceX += 500;
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
+		player->forces[2].forceX = controlForceX;
+		player->forces[2].forceY = controlForceY;
 	
 	//Physics
 		UpdateForces(player);
