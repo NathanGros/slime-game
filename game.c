@@ -195,6 +195,37 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 //Functions
 
+void UpdateForces(Body *player) {
+	//Weight
+	int weightForce = player->mass * 200;
+	player->forces[0].forceX = 0;
+	player->forces[0].forceY = weightForce;
+	//Air resistance
+
+}
+
+int ForceSumX(Body *player) {
+	int result = 0;
+	for (int i = 0; i < player->forceNb; i++) result += player->forces[i].forceX;
+	return result;
+}
+
+int ForceSumY(Body *player) {
+	int result = 0;
+	for (int i = 0; i < player->forceNb; i++) result += player->forces[i].forceY;
+	return result;
+}
+
+void UpdateBodyPosition(int *newPosX, int *newPosY, Body *player) {
+	float dt = GetFrameTime();
+	float accelerationX = (float) ForceSumX(player) / (float) player->mass;
+	float accelerationY = (float) ForceSumY(player) / (float) player->mass;
+	player->velocityX += (int) (accelerationX * dt);
+	player->velocityY += (int) (accelerationY * dt);
+	*newPosX += (int) ((float) player->velocityX * dt);
+	*newPosY += (int) ((float) player->velocityY * dt);
+}
+
 bool IsAboveLine(int slope, int pointOnLineX, int pointOnLineY, int posX, int posY) {
 	int ordinateAtOrigin = pointOnLineY - slope * pointOnLineX; //Linear function : t |--> slope * t + ordinateAtOrigin
 	return (posY > (slope * posX + ordinateAtOrigin));
@@ -225,10 +256,22 @@ void ExecuteCollisions(Room *room, int *newPosX, int *newPosY, Body *player) {
 	for (int i = 0; i < room->wallNb; i++) {
 		Wall *wall = room->walls[i];
 		if (CheckCollisionPlayerWall(*newPosX, *newPosY, player, wall->x1, wall->y1, wall->x2, wall->y2, wall->direction)) {
-			if (wall->direction == 'U') *newPosY = wall->y1 - player->radius;
-			if (wall->direction == 'D') *newPosY = wall->y1 + player->radius;
-			if (wall->direction == 'L') *newPosX = wall->x1 - player->radius;
-			if (wall->direction == 'R') *newPosX = wall->x1 + player->radius;
+			if (wall->direction == 'U') {
+				*newPosY = wall->y1 - player->radius;
+				player->velocityY = 0;
+			}
+			if (wall->direction == 'D') {
+				*newPosY = wall->y1 + player->radius;
+				player->velocityY = 0;
+			}
+			if (wall->direction == 'L') {
+				*newPosX = wall->x1 - player->radius;
+				player->velocityX = 0;
+			}
+			if (wall->direction == 'R') {
+				*newPosX = wall->x1 + player->radius;
+				player->velocityX = 0;
+			}
 		}
 	}
 }
@@ -249,7 +292,15 @@ void main() {
 	int cameraX = 0;
 	int cameraY = 0;
 	bool displayWalls = false;
-	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 1., 0, -100, 0, 0, 1);
+
+	//Make player
+	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 1., 0, -100, 0, 0, 3);
+	player->forces[0].forceX = 0;
+	player->forces[0].forceY = 0;
+	player->forces[1].forceX = 0;
+	player->forces[1].forceY = 0;
+	player->forces[2].forceX = 0;
+	player->forces[2].forceY = 0;
 
 	//Make the map
 		//blocks
@@ -310,6 +361,10 @@ void main() {
 		if (IsKeyDown(KEY_S)) newPosY += 10;
 		if (IsKeyDown(KEY_D)) newPosX += 10;
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
+	
+	//Physics
+		UpdateForces(player);
+		UpdateBodyPosition(&newPosX, &newPosY, player);
 
 	//Wall collisions
 		ExecuteCollisions(currentRoom, &newPosX, &newPosY, player);
