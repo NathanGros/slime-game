@@ -50,6 +50,23 @@ typedef struct {
 	Room **rooms;
 } Map;
 
+typedef struct {
+	int forceX;
+	int forceY;
+} Force;
+
+typedef struct {
+	int radius;
+	float mass;
+	float airRes;
+	int posX;
+	int posY;
+	int velocityX;
+	int velocityY;
+	int forceNb;
+	Force *forces;
+} Body;
+
 
 
 //Init
@@ -105,6 +122,20 @@ Room* InitRoom(int blocknb, int wallnb, int gatenb, int x1, int y1, int x2, int 
 	r->gates = malloc(gatenb * sizeof(Gate));
 	r->gatenb = gatenb;
 	return r;
+}
+
+Body* InitBody(int radius, float mass,	float airRes, int posX,	int posY, int velocityX, int velocityY, int forceNb) {
+	Body *body = malloc(sizeof(Body));
+	body->radius = radius;
+	body->mass = mass;
+	body->airRes = airRes;
+	body->posX = posX;
+	body->posY = posY;
+	body->velocityX = velocityX;
+	body->velocityY = velocityY;
+	body->forceNb = forceNb;
+	body->forces = malloc(forceNb * sizeof(Force));
+	return body;
 }
 
 
@@ -177,7 +208,7 @@ bool CheckCollisionPlayerWall(int newx, int newy, int x, int y, int playerradius
 	if (direction == 'U' && newy + playerradius > y1 && newy - playerradius < y1 && newx + playerradius > x1 && newx - playerradius < x2
 		&& !IsAboveLine(1, x1, y1, x, y) && !IsAboveLine(-1, x2, y2, x, y)) inwall = true;
 	if (direction == 'D' && newy + playerradius > y1 && newy - playerradius < y1 && newx + playerradius > x1 && newx - playerradius < x2
-		&& IsAboveLine(-1, x1, y1, x, y) && IsAboveLine(1, x1, y1, x, y)) inwall = true;
+		&& IsAboveLine(-1, x1, y1, x, y) && IsAboveLine(1, x2, y2, x, y)) inwall = true;
 	if (direction == 'L' && newx + playerradius > x1 && newx - playerradius < x1 && newy + playerradius > y1 && newy - playerradius < y2
 		&& IsAboveLine(1, x1, y1, x, y) && !IsAboveLine(-1, x2, y2, x, y)) inwall = true;
 	if (direction == 'R' && newx + playerradius > x1 && newx - playerradius < x1 && newy + playerradius > y1 && newy - playerradius < y2
@@ -212,10 +243,8 @@ void main() {
 	int h = GetScreenHeight();
 	int camx = 0;
 	int camy = 0;
-	int playerx = 0;
-	int playery = -50;
-	int playerradius = 20;
 	bool showwalls = false;
+	Body *player = InitBody(20, 1., 1., 0, -100, 0, 0, 1);
 
 	//Make the map
 		//blocks
@@ -267,8 +296,8 @@ void main() {
 		}
 
 	//Controls
-		int newplayerx = playerx;
-		int newplayery = playery;
+		int newplayerx = player->posX;
+		int newplayery = player->posY;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1; 
 		if (IsKeyDown(KEY_W)) newplayery -= 10; 
@@ -278,24 +307,24 @@ void main() {
 		if (IsKeyPressed(KEY_R)) showwalls = !showwalls; 
 
 	//Wall collisions
-		ExecuteCollisions(current_room, &newplayerx, &newplayery, playerx, playery, playerradius);
-		playerx = newplayerx;
-		playery = newplayery;
+		ExecuteCollisions(current_room, &newplayerx, &newplayery, player->posX, player->posY, player->radius);
+		player->posX = newplayerx;
+		player->posY = newplayery;
 
 	//Camera update
-		camx = playerx;
-		camy = playery;
+		camx = player->posX;
+		camy = player->posY;
 	
 	//Changing room
 		Room *new_room = current_room;
 		for (int i = 0; i < current_room->gatenb; i++) {
 			Gate *g = current_room->gates[i];
 			Rectangle gate = (Rectangle) {g->x1, g->y1, g->x2 - g->x1, g->y2 - g->y1};
-			Rectangle player = (Rectangle) {playerx-20, playery-20, 40, 40};
-			if (CheckCollisionRecs(gate, player)) {
+			Rectangle playerrect = (Rectangle) {player->posX - player->radius, player->posY - player->radius, 2 * player->radius, 2 * player->radius};
+			if (CheckCollisionRecs(gate, playerrect)) {
 				new_room = m->rooms[g->destroom];
-				playerx = g->destx;
-				playery = g->desty;
+				player->posX = g->destx;
+				player->posY = g->desty;
 			}
 		}
 		current_room = new_room;
@@ -305,7 +334,7 @@ void main() {
 			ClearBackground(block_col);
 			DrawRoom(current_room, w, h, camx, camy, zoom, bg_col, block_col);
 			if (showwalls) DrawWalls(current_room, w, h, camx, camy, zoom);
-			DrawPlayer(playerx, playery, playerradius, w, h, camx, camy, zoom);
+			DrawPlayer(player->posX, player->posY, player->radius, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
 	CloseWindow();
@@ -329,4 +358,6 @@ void main() {
 	}
 	free(m->rooms);
 	free(m);
+	free(player->forces);
+	free(player);
 }
