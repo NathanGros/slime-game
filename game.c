@@ -303,13 +303,13 @@ void main() {
 	//Controls
 		int newPosX = player->posX;
 		int newPosY = player->posY;
-		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1; 
-		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1; 
-		if (IsKeyDown(KEY_W)) newPosY -= 10; 
-		if (IsKeyDown(KEY_A)) newPosX -= 10; 
-		if (IsKeyDown(KEY_S)) newPosY += 10; 
-		if (IsKeyDown(KEY_D)) newPosX += 10; 
-		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls; 
+		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1;
+		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1;
+		if (IsKeyDown(KEY_W)) newPosY -= 10;
+		if (IsKeyDown(KEY_A)) newPosX -= 10;
+		if (IsKeyDown(KEY_S)) newPosY += 10;
+		if (IsKeyDown(KEY_D)) newPosX += 10;
+		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
 
 	//Wall collisions
 		ExecuteCollisions(currentRoom, &newPosX, &newPosY, player);
