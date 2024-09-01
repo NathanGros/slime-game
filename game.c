@@ -19,7 +19,8 @@ typedef struct {
 	int y1;
 	int x2;
 	int y2;
-} Segment;
+	char direction;
+} Wall;
 
 typedef struct {
 	int x1;
@@ -37,15 +38,15 @@ typedef struct {
 	int x2;
 	int y2;
 	int blocknb;
-	int segmentnb;
+	int wallnb;
 	int gatenb;
 	Block **blocks; //pointer on a list of pointers
-	Segment **rail;
+	Wall **walls;
 	Gate **gates;
 } Room;
 
 typedef struct {
-	int n; //number of rooms
+	int roomnb; //number of rooms
 	Room **rooms;
 } Map;
 
@@ -69,13 +70,14 @@ Block* InitBlock(int x1, int y1, int x2, int y2, int type) {
 	return b;
 }
 
-Segment* InitSegment(int x1, int y1, int x2, int y2) {
-	Segment *s = malloc(sizeof(Segment));
-	s->x1 = x1;
-	s->y1 = y1;
-	s->x2 = x2;
-	s->y2 = y2;
-	return s;
+Wall* InitWall(int x1, int y1, int x2, int y2, char direction) {
+	Wall *w = malloc(sizeof(Wall));
+	w->x1 = x1;
+	w->y1 = y1;
+	w->x2 = x2;
+	w->y2 = y2;
+	w->direction = direction;
+	return w;
 }
 
 Gate* InitGate(int x1, int y1, int x2, int y2, int destroom, int destx, int desty) {
@@ -90,7 +92,7 @@ Gate* InitGate(int x1, int y1, int x2, int y2, int destroom, int destx, int dest
 	return g;
 }
 
-Room* InitRoom(int blocknb, int segmentnb, int gatenb, int x1, int y1, int x2, int y2) {
+Room* InitRoom(int blocknb, int wallnb, int gatenb, int x1, int y1, int x2, int y2) {
 	Room* r = malloc(sizeof(Room));
 	r->x1 = x1;
 	r->y1 = y1;
@@ -98,8 +100,8 @@ Room* InitRoom(int blocknb, int segmentnb, int gatenb, int x1, int y1, int x2, i
 	r->y2 = y2;
 	r->blocks = malloc(blocknb * sizeof(Block));
 	r->blocknb = blocknb;
-	r->rail = malloc(segmentnb * sizeof(Segment));
-	r->segmentnb = segmentnb;
+	r->walls = malloc(wallnb * sizeof(Wall));
+	r->wallnb = wallnb;
 	r->gates = malloc(gatenb * sizeof(Gate));
 	r->gatenb = gatenb;
 	return r;
@@ -119,7 +121,7 @@ void DrawBlock(Block *b, int w, int h, int camx, int camy, float zoom, Color col
 	);
 }
 
-void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_col, Color wall_col) {
+void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_col, Color block_col) {
 	DrawRectangle(
 		(w/2 - (int) (zoom * (float) (camx - r->x1))),
 		(h/2 - (int) (zoom * (float) (camy - r->y1))),
@@ -131,32 +133,32 @@ void DrawRoom(Room *r, int w, int h, int camx, int camy, float zoom, Color bg_co
 		Block *b = r->blocks[i];
 		Color draw_col;
 		if (b->type == 0)
-			draw_col = wall_col;
+			draw_col = block_col;
 		else
 			draw_col = bg_col;
 		DrawBlock(b, w, h, camx, camy, zoom, draw_col);
 	}
 }
 
-void DrawRail(Room *r, int w, int h, int camx, int camy, float zoom) {
-	for (int i = 0; i < r->segmentnb; i++) {
-		Segment *s = r->rail[i];
+void DrawWalls(Room *r, int w, int h, int camx, int camy, float zoom) {
+	for (int i = 0; i < r->wallnb; i++) {
+		Wall *wall = r->walls[i];
 		DrawLine(
-			(w/2 - (int) (zoom * (float) (camx - s->x1))),
-			(h/2 - (int) (zoom * (float) (camy - s->y1))),
-			(w/2 - (int) (zoom * (float) (camx - s->x2))),
-			(h/2 - (int) (zoom * (float) (camy - s->y2))),
+			(w/2 - (int) (zoom * (float) (camx - wall->x1))),
+			(h/2 - (int) (zoom * (float) (camy - wall->y1))),
+			(w/2 - (int) (zoom * (float) (camx - wall->x2))),
+			(h/2 - (int) (zoom * (float) (camy - wall->y2))),
 			RED
 		);
 	}
 }
 
-void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, float zoom) {
+void DrawPlayer(int playerx, int playery, int playerradius, int w, int h, int camx, int camy, float zoom) {
 	DrawRectangle(
-		(w/2 - (int) (zoom * (float) (camx - (playerx-20)))),
-		(h/2 - (int) (zoom * (float) (camy - (playery-20)))),
-		(int) (zoom * (float) 40),
-		(int) (zoom * (float) 40),
+		(w/2 - (int) (zoom * (float) (camx - (playerx-playerradius)))),
+		(h/2 - (int) (zoom * (float) (camy - (playery-playerradius)))),
+		(int) (zoom * (float) (2 * playerradius)),
+		(int) (zoom * (float) (2 * playerradius)),
 		(Color) {115, 0, 255, 255}
 	);
 }
@@ -165,19 +167,34 @@ void DrawPlayer(int playerx, int playery, int w, int h, int camx, int camy, floa
 
 //Functions
 
-bool CheckCollisionRecLine(int x, int y, int x1, int y1, int x2, int y2) {
-	Rectangle player = (Rectangle) {x-20, y-20, 40, 40};
-	Rectangle line = (Rectangle) {x1, y1, x2-x1, y2-y1};
-	return CheckCollisionRecs(player, line);
+bool IsAboveLine(int coeff, int pointx, int pointy, int x, int y) {
+	int ordinateAtOrigin = pointy - coeff * pointx; //Line : t |--> coeff * t + ordinateAtOrigin
+	return y > (coeff * x + ordinateAtOrigin);
 }
 
-bool IsOnRail(int x, int y, Room *r) {
-	bool onrail = false;
-	for (int i = 0; i < r->segmentnb; i++) {
-		Segment *s = r->rail[i];
-		if (CheckCollisionRecLine(x, y, s->x1, s->y1, s->x2, s->y2)) onrail = true;
+bool CheckCollisionPlayerWall(int newx, int newy, int x, int y, int playerradius, int x1, int y1, int x2, int y2, char direction) {
+	bool inwall = false;
+	if (direction == 'U' && newy + playerradius > y1 && newy - playerradius < y1 && newx + playerradius > x1 && newx - playerradius < x2
+		&& !IsAboveLine(1, x1, y1, x, y) && !IsAboveLine(-1, x2, y2, x, y)) inwall = true;
+	if (direction == 'D' && newy + playerradius > y1 && newy - playerradius < y1 && newx + playerradius > x1 && newx - playerradius < x2
+		&& IsAboveLine(-1, x1, y1, x, y) && IsAboveLine(1, x1, y1, x, y)) inwall = true;
+	if (direction == 'L' && newx + playerradius > x1 && newx - playerradius < x1 && newy + playerradius > y1 && newy - playerradius < y2
+		&& IsAboveLine(1, x1, y1, x, y) && !IsAboveLine(-1, x2, y2, x, y)) inwall = true;
+	if (direction == 'R' && newx + playerradius > x1 && newx - playerradius < x1 && newy + playerradius > y1 && newy - playerradius < y2
+		&& IsAboveLine(-1, x1, y1, x, y) && !IsAboveLine(1, x2, y2, x, y)) inwall = true;
+	return inwall;
+}
+
+void ExecuteCollisions(Room *r, int *newx, int *newy, int x, int y, int playerradius) {
+	for (int i = 0; i < r->wallnb; i++) {
+		Wall *wall = r->walls[i];
+		if (CheckCollisionPlayerWall(*newx, *newy, x, y, playerradius, wall->x1, wall->y1, wall->x2, wall->y2, wall->direction)) {
+			if (wall->direction == 'U') *newy = wall->y1 - playerradius;
+			if (wall->direction == 'D') *newy = wall->y1 + playerradius;
+			if (wall->direction == 'L') *newx = wall->x1 - playerradius;
+			if (wall->direction == 'R') *newx = wall->x1 + playerradius;
+		}
 	}
-	return onrail;
 }
 
 
@@ -187,9 +204,9 @@ bool IsOnRail(int x, int y, Room *r) {
 void main() {
 	//Init
 	Color bg_col = (Color) {200, 200, 200, 255};
-	Color wall_col = (Color) {20, 20, 20, 255};
+	Color block_col = (Color) {20, 20, 20, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	Init(wall_col);
+	Init(block_col);
 	float zoom = 1.;
 	int w = GetScreenWidth();
 	int h = GetScreenHeight();
@@ -197,7 +214,8 @@ void main() {
 	int camy = 0;
 	int playerx = 0;
 	int playery = -50;
-	bool showrail = false;
+	int playerradius = 20;
+	bool showwalls = false;
 
 	//Make the map
 		//blocks
@@ -212,29 +230,30 @@ void main() {
 		Room *r0 = InitRoom(1, 8, 1, -500, -300, 500, 300);
 		r0->blocks[0] = b0_r0;
 		r0->gates[0] = g0_r0;
-		r0->rail[0] = InitSegment(-450, -250, 450, -250);
-		r0->rail[1] = InitSegment(450, -250, 450, 250);
-		r0->rail[2] = InitSegment(-450, -250, -450, 250);
-		r0->rail[3] = InitSegment(-500, 250, -100, 250);
-		r0->rail[4] = InitSegment(100, 250, 450, 250);
-		r0->rail[5] = InitSegment(-100, -50, 100, -50);
-		r0->rail[6] = InitSegment(-100, -50, -100, 250);
-		r0->rail[7] = InitSegment(100, -50, 100, 250);
+		r0->walls[0] = InitWall(-500, -300, 500, -300, 'D');
+		r0->walls[1] = InitWall(500, -300, 500, 300, 'L');
+		r0->walls[2] = InitWall(-500, -300, -500, 200, 'R');
+		r0->walls[3] = InitWall(-500, 300, -50, 300, 'U');
+		r0->walls[4] = InitWall(50, 300, 500, 300, 'U');
+		r0->walls[5] = InitWall(-50, 0, 50, 0, 'U');
+		r0->walls[6] = InitWall(-50, 0, -50, 300, 'L');
+		r0->walls[7] = InitWall(50, 0, 50, 300, 'R');
 
-		Room *r1 = InitRoom(1, 6, 1, -400, -600, 400, 600);
+		Room *r1 = InitRoom(1, 7, 1, -400, -600, 400, 600);
 		r1->blocks[0] = b0_r1;
 		r1->gates[0] = g0_r1;
-		r1->rail[0] = InitSegment(-350, -550, 400, -550);
-		r1->rail[1] = InitSegment(-350, -550, -350, 550);
-		r1->rail[2] = InitSegment(-350, 550, 350, 550);
-		r1->rail[3] = InitSegment(-50, -550, -50, -350);
-		r1->rail[4] = InitSegment(-50, -350, 350, -350);
-		r1->rail[5] = InitSegment(350, -350, 350, 550);
+		r1->walls[0] = InitWall(-400, -600, 400, -600, 'D');
+		r1->walls[1] = InitWall(-400, -600, -400, 600, 'R');
+		r1->walls[2] = InitWall(-400, 600, 400, 600, 'U');
+		r1->walls[3] = InitWall(0, -500, 0, -400, 'L');
+		r1->walls[4] = InitWall(0, -400, 400, -400, 'D');
+		r1->walls[5] = InitWall(0, -500, 400, -500, 'U');
+		r1->walls[6] = InitWall(400, -400, 400, 600, 'L');
 
 		//map
 		Map *m = malloc(sizeof(Map));
 		m->rooms = malloc(2 * sizeof(Room));
-		m->n = 2;
+		m->roomnb = 2;
 		m->rooms[0] = r0;
 		m->rooms[1] = r1;
 	
@@ -256,13 +275,14 @@ void main() {
 		if (IsKeyDown(KEY_A)) newplayerx -= 10; 
 		if (IsKeyDown(KEY_S)) newplayery += 10; 
 		if (IsKeyDown(KEY_D)) newplayerx += 10; 
-		if (IsKeyPressed(KEY_R)) showrail = !showrail; 
+		if (IsKeyPressed(KEY_R)) showwalls = !showwalls; 
 
-	//Rail Collision
-		if (IsOnRail(newplayerx, newplayery, current_room)) {
-			playerx = newplayerx;
-			playery = newplayery;
-		}
+	//Wall collisions
+		ExecuteCollisions(current_room, &newplayerx, &newplayery, playerx, playery, playerradius);
+		playerx = newplayerx;
+		playery = newplayery;
+
+	//Camera update
 		camx = playerx;
 		camy = playery;
 	
@@ -282,25 +302,25 @@ void main() {
 		
 	//Drawing
 		BeginDrawing();
-			ClearBackground(wall_col);
-			DrawRoom(current_room, w, h, camx, camy, zoom, bg_col, wall_col);
-			if (showrail) DrawRail(current_room, w, h, camx, camy, zoom);
-			DrawPlayer(playerx, playery, w, h, camx, camy, zoom);
+			ClearBackground(block_col);
+			DrawRoom(current_room, w, h, camx, camy, zoom, bg_col, block_col);
+			if (showwalls) DrawWalls(current_room, w, h, camx, camy, zoom);
+			DrawPlayer(playerx, playery, playerradius, w, h, camx, camy, zoom);
 		EndDrawing();
 	}
 	CloseWindow();
 
 	//De-init
-	for(int i = 0; i < m->n; i++) {
+	for(int i = 0; i < m->roomnb; i++) {
 		Room *r = m->rooms[i];
 		for(int j = 0; j < r->blocknb; j++) {
 			free(r->blocks[j]);
 		}
 		free(r->blocks);
-		for(int j = 0; j < r->segmentnb; j++) {
-			free(r->rail[j]);
+		for(int j = 0; j < r->wallnb; j++) {
+			free(r->walls[j]);
 		}
-		free(r->rail);
+		free(r->walls);
 		for(int j = 0; j < r->gatenb; j++) {
 			free(r->gates[j]);
 		}
