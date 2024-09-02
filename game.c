@@ -279,6 +279,47 @@ void ExecuteCollisions(Room *room, float *newPosX, float *newPosY, Body *player)
 	}
 }
 
+bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPointY) {
+	bool onWall = false;
+	if (wall->direction == 'U') {
+		if (player->posY < wall->y1) {
+			onWall = true;
+			*wallPointY = wall->y1;
+			if (player->posX < wall->x1) *wallPointX = wall->x1;
+			else if (player->posX > wall->x2) *wallPointX = wall->x2;
+			else *wallPointX = player->posX;
+		}
+	}
+	else if (wall->direction == 'D') {
+		if (player->posY > wall->y1) {
+			onWall = true;
+			*wallPointY = wall->y1;
+			if (player->posX < wall->x1) *wallPointX = wall->x1;
+			else if (player->posX > wall->x2) *wallPointX = wall->x2;
+			else *wallPointX = player->posX;
+		}
+	}
+	else if (wall->direction == 'L') {
+		if (player->posX < wall->x1) {
+			onWall = true;
+			*wallPointX = wall->x1;
+			if (player->posY < wall->y1) *wallPointY = wall->y1;
+			else if (player->posY > wall->y2) *wallPointY = wall->y2;
+			else *wallPointY = player->posY;
+		}
+	}
+	else {
+		if (player->posX > wall->x1) {
+			onWall = true;
+			*wallPointX = wall->x1;
+			if (player->posY < wall->y1) *wallPointY = wall->y1;
+			else if (player->posY > wall->y2) *wallPointY = wall->y2;
+			else *wallPointY = player->posY;
+		}
+	}
+	return onWall;
+}
+
 
 
 //Main
@@ -368,7 +409,7 @@ void main() {
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
 		player->forces[2].forceX = controlForceX;
 		player->forces[2].forceY = controlForceY;
-	
+
 	//Physics
 		UpdateForces(player);
 		UpdateBodyPosition(&newPosX, &newPosY, player);
@@ -377,6 +418,22 @@ void main() {
 		ExecuteCollisions(currentRoom, &newPosX, &newPosY, player);
 		player->posX = newPosX;
 		player->posY = newPosY;
+
+	//Find closest point to wall
+		for (int i = 0; i < currentRoom->wallNb; i++) {
+			int closestToWallX;
+			int closestToWallY;
+			if (ClosestPointToWall(player, currentRoom->walls[i], &closestToWallX, &closestToWallY)) {
+				printf("%d %d\n", closestToWallX, closestToWallY);
+				DrawRectangle(
+					(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
+					(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
+					(int) (zoom * (float) (2)),
+					(int) (zoom * (float) (2)),
+					RED
+				);
+			} 
+		}
 
 	//Camera update
 		cameraX = (int) player->posX;
