@@ -326,13 +326,17 @@ bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPoin
 }
 
 void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wallPointY) {
-	for (int i = 0; i < room->wallNb; i++) {
-		int *thisWallPointX;
-		int *thisWallPointY;
-		if (ClosestPointToWall(player, room->walls[i], thisWallPointX, thisWallPointY)) {
-			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > Distance(player->posX, player->posY, (float) *thisWallPointX, (float) *thisWallPointY)) {
-				*wallPointX = *thisWallPointX;
-				*wallPointY = *thisWallPointY;
+	int k = 0;
+	int thisWallPointX;
+	int thisWallPointY;
+	while (!ClosestPointToWall(player, room->walls[k], &thisWallPointX, &thisWallPointY)) {
+		k++;
+	}
+	for (int i = k; i < room->wallNb; i++) {
+		if (ClosestPointToWall(player, room->walls[i], &thisWallPointX, &thisWallPointY)) {
+			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > Distance(player->posX, player->posY, (float) thisWallPointX, (float) thisWallPointY)) {
+				*wallPointX = thisWallPointX;
+				*wallPointY = thisWallPointY;
 			}
 		}
 	}
@@ -346,6 +350,7 @@ void main() {
 	//Init
 	Color backgroundColor = (Color) {200, 200, 200, 255};
 	Color blockColor = (Color) {20, 20, 20, 255};
+	Color playerColor = (Color) {115, 0, 255, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	Init(blockColor);
 	float zoom = 1.;
@@ -356,7 +361,7 @@ void main() {
 	bool displayWalls = false;
 
 	//Make player
-	Body *player = InitBody((Color) {115, 0, 255, 255}, 20, 1., 0.5, 0., -100., 0., 0., 3);
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., 3);
 	player->forces[0].forceX = 0.;
 	player->forces[0].forceY = 0.;
 	player->forces[1].forceX = 0.;
@@ -471,7 +476,7 @@ void main() {
 				(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
 				(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
 				(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
-				RED
+				playerColor
 			);
 		EndDrawing();
 	}
