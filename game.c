@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 
 
@@ -279,6 +280,10 @@ void ExecuteCollisions(Room *room, float *newPosX, float *newPosY, Body *player)
 	}
 }
 
+float Distance(float x1, float y1, float x2, float y2) {
+	return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+}
+
 bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPointY) {
 	bool onWall = false;
 	if (wall->direction == 'U') {
@@ -318,6 +323,19 @@ bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPoin
 		}
 	}
 	return onWall;
+}
+
+void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wallPointY) {
+	for (int i = 0; i < room->wallNb; i++) {
+		int *thisWallPointX;
+		int *thisWallPointY;
+		if (ClosestPointToWall(player, room->walls[i], thisWallPointX, thisWallPointY)) {
+			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > Distance(player->posX, player->posY, (float) *thisWallPointX, (float) *thisWallPointY)) {
+				*wallPointX = *thisWallPointX;
+				*wallPointY = *thisWallPointY;
+			}
+		}
+	}
 }
 
 
@@ -420,20 +438,9 @@ void main() {
 		player->posY = newPosY;
 
 	//Find closest point to wall
-		for (int i = 0; i < currentRoom->wallNb; i++) {
-			int closestToWallX;
-			int closestToWallY;
-			if (ClosestPointToWall(player, currentRoom->walls[i], &closestToWallX, &closestToWallY)) {
-				printf("%d %d\n", closestToWallX, closestToWallY);
-				DrawRectangle(
-					(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
-					(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
-					(int) (zoom * (float) (2)),
-					(int) (zoom * (float) (2)),
-					RED
-				);
-			} 
-		}
+		int closestToWallX;
+		int closestToWallY;
+		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY); //potential crash when out of bounds ?
 
 	//Camera update
 		cameraX = (int) player->posX;
@@ -459,6 +466,13 @@ void main() {
 			DrawRoom(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
+			DrawLine(
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - player->posX))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
+				RED
+			);
 		EndDrawing();
 	}
 	CloseWindow();
