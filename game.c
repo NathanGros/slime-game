@@ -325,7 +325,7 @@ bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPoin
 	return onWall;
 }
 
-void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wallPointY) {
+void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wallPointY, float *distanceToWall) {
 	int k = 0;
 	int thisWallPointX;
 	int thisWallPointY;
@@ -334,9 +334,11 @@ void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wall
 	}
 	for (int i = k; i < room->wallNb; i++) {
 		if (ClosestPointToWall(player, room->walls[i], &thisWallPointX, &thisWallPointY)) {
-			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > Distance(player->posX, player->posY, (float) thisWallPointX, (float) thisWallPointY)) {
+			float newDistanceToWall = Distance(player->posX, player->posY, (float) thisWallPointX, (float) thisWallPointY);
+			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > newDistanceToWall) {
 				*wallPointX = thisWallPointX;
 				*wallPointY = thisWallPointY;
+				*distanceToWall = newDistanceToWall;
 			}
 		}
 	}
@@ -445,7 +447,8 @@ void main() {
 	//Find closest point to wall
 		int closestToWallX;
 		int closestToWallY;
-		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY); //potential crash when out of bounds ?
+		float distanceToWall;
+		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
 
 	//Camera update
 		cameraX = (int) player->posX;
