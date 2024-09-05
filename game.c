@@ -196,7 +196,7 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 //Functions
 
-void UpdateForces(Body *player) {
+void UpdateForces(Body *player, int closestToWallX, int closestToWallY, float distanceToWall) {
 	//Weight
 	float weightForce = player->mass * 500.;
 	player->forces[0].forceX = 0.;
@@ -206,6 +206,13 @@ void UpdateForces(Body *player) {
 	float airResistanceForceY = -1. * player->airResistance * player->velocityY;
 	player->forces[1].forceX = airResistanceForceX;
 	player->forces[1].forceY = airResistanceForceY;
+	//Spring force
+	float springForce = 1. * (0.15 * distanceToWall) * ((distanceToWall) - 30.);
+	float springForceX = (float) (closestToWallX - player->posX) / distanceToWall * springForce;
+	float springForceY = (float) (closestToWallY - player->posY) / distanceToWall * springForce;
+	printf("%f\n%f\n%f\n\n", springForce, springForceX, springForceY);
+	player->forces[3].forceX = springForceX;
+	player->forces[3].forceY = springForceY;
 }
 
 float ForceSumX(Body *player) {
@@ -363,13 +370,15 @@ void main() {
 	bool displayWalls = false;
 
 	//Make player
-	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., 3);
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., 4);
 	player->forces[0].forceX = 0.;
 	player->forces[0].forceY = 0.;
 	player->forces[1].forceX = 0.;
 	player->forces[1].forceY = 0.;
 	player->forces[2].forceX = 0.;
 	player->forces[2].forceY = 0.;
+	player->forces[3].forceX = 0.;
+	player->forces[3].forceY = 0.;
 
 	//Make the map
 		//blocks
@@ -435,20 +444,20 @@ void main() {
 		player->forces[2].forceX = controlForceX;
 		player->forces[2].forceY = controlForceY;
 
+	//Find closest point to wall
+		int closestToWallX;
+		int closestToWallY;
+		float distanceToWall;
+		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
+
 	//Physics
-		UpdateForces(player);
+		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall);
 		UpdateBodyPosition(&newPosX, &newPosY, player);
 
 	//Wall collisions
 		ExecuteCollisions(currentRoom, &newPosX, &newPosY, player);
 		player->posX = newPosX;
 		player->posY = newPosY;
-
-	//Find closest point to wall
-		int closestToWallX;
-		int closestToWallY;
-		float distanceToWall;
-		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
 
 	//Camera update
 		cameraX = (int) player->posX;
