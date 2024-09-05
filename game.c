@@ -196,7 +196,7 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 //Functions
 
-void UpdateForces(Body *player, float closestToWallX, float closestToWallY, float distanceToWall) {
+void UpdateForces(Body *player, float closestToWallX, float closestToWallY, float distanceToWall, float maxAttachDistance) {
 	//Weight
 	float weightForce = player->mass * 500.;
 	player->forces[0].forceX = 0.;
@@ -207,7 +207,11 @@ void UpdateForces(Body *player, float closestToWallX, float closestToWallY, floa
 	player->forces[1].forceX = airResistanceForceX;
 	player->forces[1].forceY = airResistanceForceY;
 	//Spring force
-	float springForce = 1. * (0.15 * distanceToWall) * ((distanceToWall) - 30.);
+	float springForce;
+	if (distanceToWall < maxAttachDistance)
+		springForce = 1. * (0.5 * distanceToWall) * ((distanceToWall) - 30.);
+	else
+		springForce = 0.;
 	float springForceX = (closestToWallX - player->posX) / distanceToWall * springForce;
 	float springForceY = (closestToWallY - player->posY) / distanceToWall * springForce;
 	player->forces[3].forceX = springForceX;
@@ -358,7 +362,7 @@ void ClosestPointToAllWalls(Body *player, Room *room, float *wallPointX, float *
 
 //Main
 
-void main() {
+int main() {
 	//Init
 	Color backgroundColor = (Color) {200, 200, 200, 255};
 	Color blockColor = (Color) {20, 20, 20, 255};
@@ -371,6 +375,7 @@ void main() {
 	int cameraX = 0;
 	int cameraY = 0;
 	bool displayWalls = false;
+	float attachToWallMaxDistance = 100.;
 
 	//Make player
 	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., 4);
@@ -454,7 +459,7 @@ void main() {
 		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
 
 	//Physics
-		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall);
+		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall, attachToWallMaxDistance);
 		UpdateBodyPosition(&newPosX, &newPosY, player);
 
 	//Wall collisions
@@ -470,8 +475,8 @@ void main() {
 		Room *newRoom = currentRoom;
 		for (int i = 0; i < currentRoom->gateNb; i++) {
 			Gate *gate = currentRoom->gates[i];
-			Rectangle gateRect = (Rectangle) {gate->x1, gate->y1, gate->x2 - gate->x1, gate->y2 - gate->y1};
-			Rectangle playerRect = (Rectangle) {(int) player->posX - player->radius, (int) player->posY - player->radius, 2 * player->radius, 2 * player->radius};
+			Rectangle gateRect = (Rectangle) {(float) gate->x1, (float) gate->y1, (float) gate->x2 - gate->x1, (float) gate->y2 - gate->y1};
+			Rectangle playerRect = (Rectangle) {player->posX - (float) player->radius, player->posY - (float) player->radius, (float) (2 * player->radius), (float) (2 * player->radius)};
 			if (CheckCollisionRecs(gateRect, playerRect)) {
 				newRoom = map->rooms[gate->destRoom];
 				player->posX = (float) gate->destX;
@@ -486,13 +491,14 @@ void main() {
 			DrawRoom(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
-			DrawLine(
-				(screenWidth / 2 - (int) (zoom * (float) (cameraX - player->posX))),
-				(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
-				(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
-				(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
-				playerColor
-			);
+			if (distanceToWall < attachToWallMaxDistance)
+				DrawLine(
+					(screenWidth / 2 - (int) (zoom * (float) (cameraX - player->posX))),
+					(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
+					(screenWidth / 2 - (int) (zoom * (float) (cameraX - closestToWallX))),
+					(screenHeight / 2 - (int) (zoom * (float) (cameraY - closestToWallY))),
+					playerColor
+				);
 		EndDrawing();
 	}
 	CloseWindow();
@@ -518,4 +524,6 @@ void main() {
 	free(map);
 	free(player->forces);
 	free(player);
+
+	return 0;
 }
