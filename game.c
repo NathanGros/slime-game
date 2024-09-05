@@ -196,7 +196,7 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 //Functions
 
-void UpdateForces(Body *player, int closestToWallX, int closestToWallY, float distanceToWall) {
+void UpdateForces(Body *player, float closestToWallX, float closestToWallY, float distanceToWall) {
 	//Weight
 	float weightForce = player->mass * 500.;
 	player->forces[0].forceX = 0.;
@@ -208,9 +208,8 @@ void UpdateForces(Body *player, int closestToWallX, int closestToWallY, float di
 	player->forces[1].forceY = airResistanceForceY;
 	//Spring force
 	float springForce = 1. * (0.15 * distanceToWall) * ((distanceToWall) - 30.);
-	float springForceX = (float) (closestToWallX - player->posX) / distanceToWall * springForce;
-	float springForceY = (float) (closestToWallY - player->posY) / distanceToWall * springForce;
-	printf("%f\n%f\n%f\n\n", springForce, springForceX, springForceY);
+	float springForceX = (closestToWallX - player->posX) / distanceToWall * springForce;
+	float springForceY = (closestToWallY - player->posY) / distanceToWall * springForce;
 	player->forces[3].forceX = springForceX;
 	player->forces[3].forceY = springForceY;
 }
@@ -291,58 +290,62 @@ float Distance(float x1, float y1, float x2, float y2) {
 	return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
 
-bool ClosestPointToWall(Body *player, Wall *wall, int *wallPointX, int *wallPointY) {
+bool ClosestPointToWall(Body *player, Wall *wall, float *wallPointX, float *wallPointY) {
 	bool onWall = false;
 	if (wall->direction == 'U') {
-		if (player->posY < wall->y1) {
+		if (player->posY < (float) wall->y1) {
 			onWall = true;
-			*wallPointY = wall->y1;
-			if (player->posX < wall->x1) *wallPointX = wall->x1;
-			else if (player->posX > wall->x2) *wallPointX = wall->x2;
+			*wallPointY = (float) wall->y1;
+			if (player->posX < (float) wall->x1) *wallPointX = (float) wall->x1;
+			else if (player->posX > (float) wall->x2) *wallPointX = (float) wall->x2;
 			else *wallPointX = player->posX;
 		}
 	}
 	else if (wall->direction == 'D') {
-		if (player->posY > wall->y1) {
+		if (player->posY > (float) wall->y1) {
 			onWall = true;
-			*wallPointY = wall->y1;
-			if (player->posX < wall->x1) *wallPointX = wall->x1;
-			else if (player->posX > wall->x2) *wallPointX = wall->x2;
+			*wallPointY = (float) wall->y1;
+			if (player->posX < (float) wall->x1) *wallPointX = (float) wall->x1;
+			else if (player->posX > (float) wall->x2) *wallPointX = (float) wall->x2;
 			else *wallPointX = player->posX;
 		}
 	}
 	else if (wall->direction == 'L') {
-		if (player->posX < wall->x1) {
+		if (player->posX < (float) wall->x1) {
 			onWall = true;
-			*wallPointX = wall->x1;
-			if (player->posY < wall->y1) *wallPointY = wall->y1;
-			else if (player->posY > wall->y2) *wallPointY = wall->y2;
+			*wallPointX = (float) wall->x1;
+			if (player->posY < (float) wall->y1) *wallPointY = (float) wall->y1;
+			else if (player->posY > (float) wall->y2) *wallPointY = (float) wall->y2;
 			else *wallPointY = player->posY;
 		}
 	}
 	else {
 		if (player->posX > wall->x1) {
 			onWall = true;
-			*wallPointX = wall->x1;
-			if (player->posY < wall->y1) *wallPointY = wall->y1;
-			else if (player->posY > wall->y2) *wallPointY = wall->y2;
+			*wallPointX = (float) wall->x1;
+			if (player->posY < (float) wall->y1) *wallPointY = (float) wall->y1;
+			else if (player->posY > (float) wall->y2) *wallPointY = (float) wall->y2;
 			else *wallPointY = player->posY;
 		}
 	}
 	return onWall;
 }
 
-void ClosestPointToAllWalls(Body *player, Room *room, int *wallPointX, int *wallPointY, float *distanceToWall) {
+void ClosestPointToAllWalls(Body *player, Room *room, float *wallPointX, float *wallPointY, float *distanceToWall) {
 	int k = 0;
-	int thisWallPointX;
-	int thisWallPointY;
+	float thisWallPointX;
+	float thisWallPointY;
 	while (!ClosestPointToWall(player, room->walls[k], &thisWallPointX, &thisWallPointY)) {
 		k++;
 	}
+	*wallPointX = thisWallPointX;
+	*wallPointY = thisWallPointY;
+	float newDistanceToWall = Distance(player->posX, player->posY, thisWallPointX, thisWallPointY);
+	*distanceToWall = newDistanceToWall;
 	for (int i = k; i < room->wallNb; i++) {
 		if (ClosestPointToWall(player, room->walls[i], &thisWallPointX, &thisWallPointY)) {
-			float newDistanceToWall = Distance(player->posX, player->posY, (float) thisWallPointX, (float) thisWallPointY);
-			if (Distance(player->posX, player->posY, (float) *wallPointX, (float) *wallPointY) > newDistanceToWall) {
+			float newDistanceToWall = Distance(player->posX, player->posY, thisWallPointX, thisWallPointY);
+			if (Distance(player->posX, player->posY, *wallPointX, *wallPointY) > newDistanceToWall) {
 				*wallPointX = thisWallPointX;
 				*wallPointY = thisWallPointY;
 				*distanceToWall = newDistanceToWall;
@@ -445,8 +448,8 @@ void main() {
 		player->forces[2].forceY = controlForceY;
 
 	//Find closest point to wall
-		int closestToWallX;
-		int closestToWallY;
+		float closestToWallX;
+		float closestToWallY;
 		float distanceToWall;
 		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
 
