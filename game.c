@@ -358,6 +358,25 @@ void ClosestPointToAllWalls(Body *player, Room *room, float *wallPointX, float *
 	}
 }
 
+bool CheckCollisionRecLine(float playerX1, float playerY1, float playerX2, float playerY2, int gateX1, int gateY1, int gateX2, int gateY2) {
+	return ((playerX2 >= gateX1 && playerX1 <= gateX2) && (playerY2 >= gateY1 && playerY1 <= gateY2));
+}
+
+void checkCollisionGates(Room **newRoom, Map *map, Body *player) {
+	for (int i = 0; i < (*newRoom)->gateNb; i++) {
+		Gate *gate = (*newRoom)->gates[i];
+		float x1 = player->posX - (float) player->radius;
+		float y1 = player->posY - (float) player->radius;
+		float x2 = player->posX + (float) player->radius;
+		float y2 = player->posY + (float) player->radius;
+		if (CheckCollisionRecLine(x1, y1, x2, y2, gate->x1, gate->y1, gate->x2, gate->y2)) {
+			*newRoom = map->rooms[gate->destRoom];
+			player->posX = (float) gate->destX;
+			player->posY = (float) gate->destY;
+		}
+	}
+}
+
 
 
 //Main
@@ -394,8 +413,8 @@ int main() {
 		Block *block0_room1 = InitBlock(0, -500, 400, -400, 0);
 		
 		//gates
-		Gate *gate0_room0 = InitGate(-600, 200, -500, 300, 1, 350, -550);
-		Gate *gate0_room1 = InitGate(400, -600, 500, -500, 0, -450, 250);
+		Gate *gate0_room0 = InitGate(-500, 200, -500, 300, 1, 350, -550);
+		Gate *gate0_room1 = InitGate(400, -600, 400, -500, 0, -450, 250);
 
 		//rooms
 		Room *room0 = InitRoom(1, 8, 1, -500, -300, 500, 300);
@@ -471,19 +490,10 @@ int main() {
 		cameraX = (int) player->posX;
 		cameraY = (int) player->posY;
 	
-	//Changing room TODO
-		Room *newRoom = currentRoom;
-		for (int i = 0; i < currentRoom->gateNb; i++) {
-			Gate *gate = currentRoom->gates[i];
-			Rectangle gateRect = (Rectangle) {(float) gate->x1, (float) gate->y1, (float) gate->x2 - gate->x1, (float) gate->y2 - gate->y1};
-			Rectangle playerRect = (Rectangle) {player->posX - (float) player->radius, player->posY - (float) player->radius, (float) (2 * player->radius), (float) (2 * player->radius)};
-			if (CheckCollisionRecs(gateRect, playerRect)) {
-				newRoom = map->rooms[gate->destRoom];
-				player->posX = (float) gate->destX;
-				player->posY = (float) gate->destY;
-			}
-		}
-		currentRoom = newRoom;
+	//Changing room
+	Room **newRoom = &currentRoom;
+	checkCollisionGates(newRoom, map, player);
+	currentRoom = *newRoom;
 		
 	//Drawing
 		BeginDrawing();
