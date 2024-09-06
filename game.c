@@ -65,6 +65,7 @@ typedef struct {
 	float posY;
 	float velocityX;
 	float velocityY;
+	bool hasWallCrawl;
 	int forceNb;
 	Force *forces;
 } Body;
@@ -126,7 +127,7 @@ Room* InitRoom(int blockNb, int wallNb, int gateNb, int x1, int y1, int x2, int 
 	return room;
 }
 
-Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, int forceNb) {
+Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, bool hasWallCrawl, int forceNb) {
 	Body *body = malloc(sizeof(Body));
 	body->color = color;
 	body->radius = radius;
@@ -136,6 +137,7 @@ Body* InitBody(Color color, int radius, float mass, float airResistance, float p
 	body->posY = posY;
 	body->velocityX = velocityX;
 	body->velocityY = velocityY;
+	body->hasWallCrawl = hasWallCrawl;
 	body->forceNb = forceNb;
 	body->forces = malloc(forceNb * sizeof(Force));
 	return body;
@@ -397,7 +399,7 @@ int main() {
 	float attachToWallMaxDistance = 100.;
 
 	//Make player
-	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., 4);
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, 4);
 	player->forces[0].forceX = 0.;
 	player->forces[0].forceY = 0.;
 	player->forces[1].forceX = 0.;
