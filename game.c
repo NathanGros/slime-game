@@ -67,6 +67,7 @@ typedef struct {
 	float velocityX;
 	float velocityY;
 	bool hasWallCrawl;
+	bool hasExtend;
 	int forceNb;
 	Force *forces;
 } Body;
@@ -129,7 +130,7 @@ Room* InitRoom(int blockNb, int wallNb, int gateNb, int x1, int y1, int x2, int 
 	return room;
 }
 
-Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, bool hasWallCrawl, int forceNb) {
+Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, bool hasWallCrawl, bool hasExtend, int forceNb) {
 	Body *body = malloc(sizeof(Body));
 	body->color = color;
 	body->radius = radius;
@@ -140,6 +141,7 @@ Body* InitBody(Color color, int radius, float mass, float airResistance, float p
 	body->velocityX = velocityX;
 	body->velocityY = velocityY;
 	body->hasWallCrawl = hasWallCrawl;
+	body->hasExtend = hasExtend;
 	body->forceNb = forceNb;
 	body->forces = malloc(forceNb * sizeof(Force));
 	return body;
@@ -253,15 +255,31 @@ void UpdateForces(Body *player, float closestToWallX, float closestToWallY, floa
 	player->forces[1].forceX = airResistanceForceX;
 	player->forces[1].forceY = airResistanceForceY;
 	//Spring force
-	float springForce;
-	if (distanceToWall < maxAttachDistance)
-		springForce = 1. * (0.5 * distanceToWall) * ((distanceToWall) - 30.);
-	else
-		springForce = 0.;
-	float springForceX = (closestToWallX - player->posX) / distanceToWall * springForce;
-	float springForceY = (closestToWallY - player->posY) / distanceToWall * springForce;
-	player->forces[3].forceX = springForceX;
-	player->forces[3].forceY = springForceY;
+	if (player->hasWallCrawl) {
+		float springForce;
+		float k;
+		float l0;
+		if (player->hasExtend) {
+			k = 0.5;
+			l0 = 30.;
+		}
+		else {
+			k = 2.;
+			l0 = 10.;
+		}
+		if (distanceToWall < maxAttachDistance)
+			springForce = (k * distanceToWall) * ((distanceToWall) - l0);
+		else
+			springForce = 0.;
+		float springForceX = (closestToWallX - player->posX) / distanceToWall * springForce;
+		float springForceY = (closestToWallY - player->posY) / distanceToWall * springForce;
+		player->forces[3].forceX = springForceX;
+		player->forces[3].forceY = springForceY;
+	}
+	else {
+		player->forces[3].forceX = 0.;
+		player->forces[3].forceY = 0.;
+	}
 }
 
 float ForceSumX(Body *player) {
@@ -440,18 +458,14 @@ int main() {
 	int cameraX = 0;
 	int cameraY = 0;
 	bool displayWalls = false;
-	float attachToWallMaxDistance = 100.;
+	float attachToWallMaxDistance = 10.;
 
 	//Make player
-	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, 4);
-	player->forces[0].forceX = 0.;
-	player->forces[0].forceY = 0.;
-	player->forces[1].forceX = 0.;
-	player->forces[1].forceY = 0.;
-	player->forces[2].forceX = 0.;
-	player->forces[2].forceY = 0.;
-	player->forces[3].forceX = 0.;
-	player->forces[3].forceY = 0.;
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, false, 4);
+	for (int i = 0; i < player->forceNb; i++) {
+		player->forces[i].forceX = 0.;
+		player->forces[i].forceY = 0.;
+	}
 
 	//Make the map
 		//blocks
@@ -501,19 +515,27 @@ int main() {
 			screenWidth = GetScreenWidth();
 			screenHeight = GetScreenHeight();
 		}
+	
+	//update max attachable distance
+		if (player->hasExtend)
+			attachToWallMaxDistance = 100.;
+		else
+			attachToWallMaxDistance = 30.;
 
-	//Controls
+	//Start move
 		float newPosX = player->posX;
 		float newPosY = player->posY;
+
+	//Controls
 		float controlForceX = 0.;
 		float controlForceY = 0.;
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1;
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1;
-		if (IsKeyDown(KEY_W)) controlForceY -= 1500.;
-		if (IsKeyDown(KEY_A)) controlForceX -= 500.;
-		if (IsKeyDown(KEY_S)) controlForceY += 500.;
-		if (IsKeyDown(KEY_D)) controlForceX += 500.;
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
+		if (IsKeyDown(KEY_W) && player->hasWallCrawl) controlForceY -= 1500.;
+		if (IsKeyDown(KEY_S)) controlForceY += 500.;
+		if (IsKeyDown(KEY_A)) controlForceX -= 500.;
+		if (IsKeyDown(KEY_D)) controlForceX += 500.;
 		player->forces[2].forceX = controlForceX;
 		player->forces[2].forceY = controlForceY;
 
@@ -521,7 +543,8 @@ int main() {
 		float closestToWallX;
 		float closestToWallY;
 		float distanceToWall;
-		ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall); //potential crash when out of bounds ?
+		if (player->hasWallCrawl)
+			ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall);
 
 	//Physics
 		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall, attachToWallMaxDistance);
@@ -529,6 +552,8 @@ int main() {
 
 	//Wall collisions
 		ExecuteCollisions(currentRoom, &newPosX, &newPosY, player);
+	
+	//End move
 		player->posX = newPosX;
 		player->posY = newPosY;
 
@@ -537,9 +562,9 @@ int main() {
 		cameraY = (int) player->posY;
 	
 	//Changing room
-	Room **newRoom = &currentRoom;
-	checkCollisionGates(newRoom, map, player);
-	currentRoom = *newRoom;
+		Room **newRoom = &currentRoom;
+		checkCollisionGates(newRoom, map, player);
+		currentRoom = *newRoom;
 		
 	//Drawing
 		BeginDrawing();
@@ -548,7 +573,7 @@ int main() {
 			DrawGates(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
-			if (distanceToWall < attachToWallMaxDistance)
+			if (player->hasWallCrawl && distanceToWall < attachToWallMaxDistance)
 				DrawLine(
 					(screenWidth / 2 - (int) (zoom * (float) (cameraX - player->posX))),
 					(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
