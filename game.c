@@ -173,44 +173,45 @@ void DrawRoom(Room *room, int screenWidth, int screenHeight, int cameraX, int ca
 	}
 }
 
-void DrawGates(Room *room, int screenWidth, int screenHeight, int cameraX, int cameraY, float zoom, Color backgroundColor, Color gateColor) {
+void DrawGates(Room *room, int screenWidth, int screenHeight, int cameraX, int cameraY, float zoom, Color backgroundColor, Color blockColor) {
 	for (int i = 0; i < room->gateNb; i++) {
 		Gate *gate = room->gates[i];
-		int gateStartX;
-		int gateStartY;
-		int gateLengthX;
-		int gateLengthY;
-		if (gate->direction == 'R') {
-			gateStartX = gate->x1 - 50;
-			gateStartY = gate->y1;
-			gateLengthX = 50;
-			gateLengthY = 100;
-		}
-		else if (gate->direction == 'L') {
-			gateStartX = gate->x1;
-			gateStartY = gate->y1;
-			gateLengthX = 50;
-			gateLengthY = 100;
-		}
-		else if (gate->direction == 'U') {
-			gateStartX = gate->x1;
-			gateStartY = gate->y1;
-			gateLengthX = 100;
-			gateLengthY = 50;
-		}
-		else {
-			gateStartX = gate->x1;
-			gateStartY = gate->y1 - 50;
-			gateLengthX = 100;
-			gateLengthY = 50;
-		}
-		DrawRectangle(
-			(screenWidth / 2 - (int) (zoom * (float) (cameraX - gateStartX))),
-			(screenHeight / 2 - (int) (zoom * (float) (cameraY - gateStartY))),
-			(int) (zoom * (float) gateLengthX),
-			(int) (zoom * (float) gateLengthY),
-			gateColor
-		);
+		if (gate->direction == 'R')
+			DrawRectangleGradientH(
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - gate->x1 + 50))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - gate->y1))),
+				(int) (zoom * (float) 50),
+				(int) (zoom * (float) 100),
+				blockColor,
+				backgroundColor
+			);
+		else if (gate->direction == 'L')
+			DrawRectangleGradientH(
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - gate->x1))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - gate->y1))),
+				(int) (zoom * (float) 50),
+				(int) (zoom * (float) 100),
+				backgroundColor,
+				blockColor
+			);
+		else if (gate->direction == 'U')
+			DrawRectangleGradientV(
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - gate->x1))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - gate->y1))),
+				(int) (zoom * (float) 100),
+				(int) (zoom * (float) 50),
+				backgroundColor,
+				blockColor
+			);
+		else
+			DrawRectangleGradientV(
+				(screenWidth / 2 - (int) (zoom * (float) (cameraX - gate->x1))),
+				(screenHeight / 2 - (int) (zoom * (float) (cameraY - gate->y1 + 50))),
+				(int) (zoom * (float) 100),
+				(int) (zoom * (float) 50),
+				blockColor,
+				backgroundColor
+			);
 	}
 }
 
@@ -430,7 +431,6 @@ int main() {
 	//Init
 	Color backgroundColor = (Color) {200, 200, 200, 255};
 	Color blockColor = (Color) {20, 20, 20, 255};
-	Color gateColor = (Color) {100, 100, 100, 255};
 	Color playerColor = (Color) {115, 0, 255, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	Init(blockColor);
@@ -545,7 +545,7 @@ int main() {
 		BeginDrawing();
 			ClearBackground(blockColor);
 			DrawRoom(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
-			DrawGates(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, gateColor);
+			DrawGates(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			if (distanceToWall < attachToWallMaxDistance)
