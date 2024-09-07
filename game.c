@@ -459,9 +459,10 @@ int main() {
 	int cameraY = 0;
 	bool displayWalls = false;
 	float attachToWallMaxDistance = 10.;
+	float distanceToWall;
 
 	//Make player
-	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, false, 4);
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, true, 4);
 	for (int i = 0; i < player->forceNb; i++) {
 		player->forces[i].forceX = 0.;
 		player->forces[i].forceY = 0.;
@@ -521,6 +522,7 @@ int main() {
 			attachToWallMaxDistance = 100.;
 		else
 			attachToWallMaxDistance = 30.;
+		bool isAttachedToWall = distanceToWall < attachToWallMaxDistance;
 
 	//Start move
 		float newPosX = player->posX;
@@ -532,7 +534,7 @@ int main() {
 		if (IsKeyPressed(KEY_I) && zoom < 2.) zoom += 0.1;
 		if (IsKeyPressed(KEY_O) && zoom > 0.5) zoom -= 0.1;
 		if (IsKeyPressed(KEY_R)) displayWalls = !displayWalls;
-		if (IsKeyDown(KEY_W) && player->hasWallCrawl) controlForceY -= 1500.;
+		if (IsKeyDown(KEY_W) && player->hasWallCrawl && isAttachedToWall) controlForceY -= 1500.;
 		if (IsKeyDown(KEY_S)) controlForceY += 500.;
 		if (IsKeyDown(KEY_A)) controlForceX -= 500.;
 		if (IsKeyDown(KEY_D)) controlForceX += 500.;
@@ -542,7 +544,6 @@ int main() {
 	//Find closest point to wall
 		float closestToWallX;
 		float closestToWallY;
-		float distanceToWall;
 		if (player->hasWallCrawl)
 			ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall);
 
@@ -573,7 +574,7 @@ int main() {
 			DrawGates(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
-			if (player->hasWallCrawl && distanceToWall < attachToWallMaxDistance)
+			if (player->hasWallCrawl && isAttachedToWall)
 				DrawLine(
 					(screenWidth / 2 - (int) (zoom * (float) (cameraX - player->posX))),
 					(screenHeight / 2 - (int) (zoom * (float) (cameraY - player->posY))),
