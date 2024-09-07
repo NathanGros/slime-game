@@ -28,6 +28,7 @@ typedef struct {
 	int y1;
 	int x2;
 	int y2;
+	char direction;
 	int destRoom;
 	int destX;
 	int destY;
@@ -100,12 +101,13 @@ Wall* InitWall(int x1, int y1, int x2, int y2, char direction) {
 	return wall;
 }
 
-Gate* InitGate(int x1, int y1, int x2, int y2, int destRoom, int destX, int destY) {
+Gate* InitGate(int x1, int y1, int x2, int y2, char direction, int destRoom, int destX, int destY) {
 	Gate *gate = malloc(sizeof(Gate));
 	gate->x1 = x1;
 	gate->y1 = y1;
 	gate->x2 = x2;
 	gate->y2 = y2;
+	gate->direction = direction;
 	gate->destRoom = destRoom;
 	gate->destX = destX;
 	gate->destY = destY;
@@ -168,6 +170,47 @@ void DrawRoom(Room *room, int screenWidth, int screenHeight, int cameraX, int ca
 	for (int i = 0; i < room->blockNb; i++) {
 		Block *block = room->blocks[i];
 		DrawBlock(block, screenWidth, screenHeight, cameraX, cameraY, zoom, blockColor);
+	}
+}
+
+void DrawGates(Room *room, int screenWidth, int screenHeight, int cameraX, int cameraY, float zoom, Color backgroundColor, Color gateColor) {
+	for (int i = 0; i < room->gateNb; i++) {
+		Gate *gate = room->gates[i];
+		int gateStartX;
+		int gateStartY;
+		int gateLengthX;
+		int gateLengthY;
+		if (gate->direction == 'R') {
+			gateStartX = gate->x1 - 50;
+			gateStartY = gate->y1;
+			gateLengthX = 50;
+			gateLengthY = 100;
+		}
+		else if (gate->direction == 'L') {
+			gateStartX = gate->x1;
+			gateStartY = gate->y1;
+			gateLengthX = 50;
+			gateLengthY = 100;
+		}
+		else if (gate->direction == 'U') {
+			gateStartX = gate->x1;
+			gateStartY = gate->y1;
+			gateLengthX = 100;
+			gateLengthY = 50;
+		}
+		else {
+			gateStartX = gate->x1;
+			gateStartY = gate->y1 - 50;
+			gateLengthX = 100;
+			gateLengthY = 50;
+		}
+		DrawRectangle(
+			(screenWidth / 2 - (int) (zoom * (float) (cameraX - gateStartX))),
+			(screenHeight / 2 - (int) (zoom * (float) (cameraY - gateStartY))),
+			(int) (zoom * (float) gateLengthX),
+			(int) (zoom * (float) gateLengthY),
+			gateColor
+		);
 	}
 }
 
@@ -387,6 +430,7 @@ int main() {
 	//Init
 	Color backgroundColor = (Color) {200, 200, 200, 255};
 	Color blockColor = (Color) {20, 20, 20, 255};
+	Color gateColor = (Color) {100, 100, 100, 255};
 	Color playerColor = (Color) {115, 0, 255, 255};
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	Init(blockColor);
@@ -415,8 +459,8 @@ int main() {
 		Block *block0_room1 = InitBlock(0, -500, 400, -400, 0);
 		
 		//gates
-		Gate *gate0_room0 = InitGate(-500, 200, -500, 300, 1, 350, -550);
-		Gate *gate0_room1 = InitGate(400, -600, 400, -500, 0, -450, 250);
+		Gate *gate0_room0 = InitGate(-500, 200, -500, 300, 'R', 1, 350, -550);
+		Gate *gate0_room1 = InitGate(400, -600, 400, -500, 'L', 0, -450, 250);
 
 		//rooms
 		Room *room0 = InitRoom(1, 8, 1, -500, -300, 500, 300);
@@ -501,6 +545,7 @@ int main() {
 		BeginDrawing();
 			ClearBackground(blockColor);
 			DrawRoom(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, blockColor);
+			DrawGates(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom, backgroundColor, gateColor);
 			if (displayWalls) DrawWalls(currentRoom, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			DrawPlayer(player, screenWidth, screenHeight, cameraX, cameraY, zoom);
 			if (distanceToWall < attachToWallMaxDistance)
