@@ -62,6 +62,7 @@ typedef struct {
 	int radius;
 	float mass;
 	float airResistance;
+	float friction;
 	float posX;
 	float posY;
 	float velocityX;
@@ -130,12 +131,13 @@ Room* InitRoom(int blockNb, int wallNb, int gateNb, int x1, int y1, int x2, int 
 	return room;
 }
 
-Body* InitBody(Color color, int radius, float mass, float airResistance, float posX, float posY, float velocityX, float velocityY, bool hasWallCrawl, bool hasExtend, int forceNb) {
+Body* InitBody(Color color, int radius, float mass, float airResistance, float friction, float posX, float posY, float velocityX, float velocityY, bool hasWallCrawl, bool hasExtend, int forceNb) {
 	Body *body = malloc(sizeof(Body));
 	body->color = color;
 	body->radius = radius;
 	body->mass = mass;
 	body->airResistance = airResistance;
+	body->friction = friction;
 	body->posX = posX;
 	body->posY = posY;
 	body->velocityX = velocityX;
@@ -244,7 +246,7 @@ void DrawPlayer(Body *player, int screenWidth, int screenHeight, int cameraX, in
 
 //Functions
 
-void UpdateForces(Body *player, float closestToWallX, float closestToWallY, float distanceToWall, float maxAttachDistance) {
+void UpdateForces(Body *player, float closestToWallX, float closestToWallY, float distanceToWall, float maxAttachDistance, bool isAttachedToWall) {
 	//Weight
 	float weightForce = player->mass * 500.;
 	player->forces[0].forceX = 0.;
@@ -280,6 +282,19 @@ void UpdateForces(Body *player, float closestToWallX, float closestToWallY, floa
 		player->forces[3].forceX = 0.;
 		player->forces[3].forceY = 0.;
 	}
+	//friction force TODO
+	/*
+	if (isAttachedToWall) {
+		if (false) {
+			float frictionForceY = -1. * player->friction / distanceToWall;
+			player->forces[4].forceY = frictionForceY;
+		}
+		else {
+			float frictionForceX = -1. * sqrt(abs(player->velocityX));
+			player->forces[4].forceX = frictionForceX;
+		}
+	}
+	*/
 }
 
 float ForceSumX(Body *player) {
@@ -462,7 +477,7 @@ int main() {
 	float distanceToWall;
 
 	//Make player
-	Body *player = InitBody(playerColor, 20, 1., 0.5, 0., -100., 0., 0., true, true, 4);
+	Body *player = InitBody(playerColor, 20, 1., 0.5, 1.,  0., -100., 0., 0., true, true, 5);
 	for (int i = 0; i < player->forceNb; i++) {
 		player->forces[i].forceX = 0.;
 		player->forces[i].forceY = 0.;
@@ -548,7 +563,7 @@ int main() {
 			ClosestPointToAllWalls(player, currentRoom, &closestToWallX, &closestToWallY, &distanceToWall);
 
 	//Physics
-		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall, attachToWallMaxDistance);
+		UpdateForces(player, closestToWallX, closestToWallY, distanceToWall, attachToWallMaxDistance, isAttachedToWall);
 		UpdateBodyPosition(&newPosX, &newPosY, player);
 
 	//Wall collisions
